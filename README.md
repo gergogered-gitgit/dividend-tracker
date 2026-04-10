@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dividend Tracker
 
 Track your dividend portfolio in one place. See upcoming payments on a visual calendar, monitor dividend growth trends, estimate tax withholding, and switch between EUR, USD, and HUF. Powered by live Yahoo Finance data.
@@ -50,3 +51,7 @@ streamlit run app.py
 - **yfinance** — live stock/dividend data from Yahoo Finance
 - **Supabase** — portfolio storage (free tier)
 - **Python** — pandas for data wrangling
+=======
+# dividend-tracker
+Track your dividend portfolio in one place. See upcoming payments on a visual calendar, monitor dividend growth, estimate tax withholding, and switch between currencies. Powered by live Yahoo Finance data.
+>>>>>>> 2091d50d7d2b4577ebb015bba972c694af5a226e
