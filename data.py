@@ -31,7 +31,7 @@ def get_stock_info(ticker: str) -> dict:
           ),
             "currency": info.get("currency") or info.get("financialCurrency") or "USD",
             "dividend_rate": info.get("dividendRate") or info.get("trailingAnnualDividendRate"),
-            "dividend_yield": info.get("dividendYield") or info.get("trailingAnnualDividendYield"),
+            "dividend_yield": _normalize_yield(info),
             "ex_dividend_date": _timestamp_to_date(info.get("exDividendDate")),
         }
     except Exception:
@@ -291,6 +291,18 @@ def fmt_money(value: float, currency: str) -> str:
 
 # --- Helper functions ---
 
+def _normalize_yield(info: dict) -> float:
+      """
+      Get dividend yield as a decimal where 0.02 = 2%.
+      yfinance sometimes returns values >1 — normalize those.
+      """
+      y = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
+      if y is None:
+          return None
+      if y > 1:
+          y = y / 100
+      return y
+    
 def _timestamp_to_date(ts):
     """Convert a unix timestamp to a date, or return None."""
     if ts is None:
