@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dividend Tracker — 80s Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: #0a0a1a;
+            color: #e0e0ff;
+            overflow-x: hidden;
+        }
+
+        /* Scanline overlay */
+        body::after {
+            content: '';
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.08) 2px,
+                rgba(0, 0, 0, 0.08) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Neon glow utility */
+        .glow-pink { text-shadow: 0 0 7px #ff2d95, 0 0 20px #ff2d95, 0 0 40px #ff2d95; }
+        .glow-cyan { text-shadow: 0 0 7px #00f0ff, 0 0 20px #00f0ff, 0 0 40px #00f0ff; }
+        .glow-yellow { text-shadow: 0 0 7px #ffe14d, 0 0 20px #ffe14d; }
+        .glow-green { text-shadow: 0 0 7px #39ff14, 0 0 20px #39ff14; }
+        .glow-purple { text-shadow: 0 0 7px #b042ff, 0 0 20px #b042ff; }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed; left: 0; top: 0; bottom: 0; width: 260px;
+            background: linear-gradient(180deg, #1a0a2e 0%, #0d0d2b 100%);
+            padding: 24px 16px;
+            border-right: 2px solid #ff2d95;
+            box-shadow: 2px 0 20px rgba(255, 45, 149, 0.3);
+        }
+        .sidebar-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px; color: #ff2d95; text-transform: uppercase;
+            letter-spacing: 3px; margin-bottom: 20px;
+            text-shadow: 0 0 10px #ff2d95;
+        }
+        .sidebar label { display: block; font-size: 12px; color: #00f0ff; margin-bottom: 6px; letter-spacing: 1px; }
+        .sidebar select {
+            width: 100%; padding: 8px 10px;
+            background: #0a0a1a; color: #00f0ff;
+            border: 1px solid #00f0ff;
+            border-radius: 0; font-family: 'Share Tech Mono', monospace; font-size: 14px;
+            margin-bottom: 28px;
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.2), inset 0 0 8px rgba(0, 240, 255, 0.05);
+        }
+        .sidebar select:focus { outline: none; box-shadow: 0 0 15px rgba(0, 240, 255, 0.5); }
+
+        .nav-item {
+            display: block; width: 100%; text-align: left; padding: 10px 14px; margin-bottom: 4px;
+            background: none; border: 1px solid transparent; color: #8888aa;
+            font-family: 'Orbitron', sans-serif; font-size: 12px; letter-spacing: 1px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .nav-item:hover { color: #ff2d95; border-color: #ff2d9544; background: #ff2d9510; }
+        .nav-item.active {
+            color: #ff2d95; border: 1px solid #ff2d95;
+            background: linear-gradient(90deg, #ff2d9515, transparent);
+            text-shadow: 0 0 10px #ff2d95;
+        }
+
+        /* Grid lines background */
+        .main {
+            margin-left: 260px; padding: 32px 48px; max-width: 1100px;
+            background-image:
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            min-height: 100vh;
+        }
+
+        .main h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px; font-weight: 900; margin-bottom: 8px;
+            background: linear-gradient(90deg, #ff2d95, #ff6b6b, #ffe14d);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 20px rgba(255, 45, 149, 0.4));
+        }
+        .main h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px; margin: 32px 0 16px; color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+            letter-spacing: 2px;
+        }
+
+        /* Metric cards */
+        .metrics { display: flex; gap: 16px; margin: 24px 0 32px; }
+        .metric {
+            flex: 1; padding: 18px 20px;
+            background: linear-gradient(135deg, #1a0a2e, #0d0d2b);
+            border: 1px solid #b042ff;
+            box-shadow: 0 0 15px rgba(176, 66, 255, 0.2), inset 0 0 30px rgba(176, 66, 255, 0.03);
+            position: relative; overflow: hidden;
+        }
+        .metric::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, #b042ff, transparent);
+        }
+        .metric .label {
+            font-size: 11px; color: #8888cc; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .metric .value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px; font-weight: 700; color: #e0e0ff;
+        }
+        .metric .value.green {
+            color: #39ff14;
+            text-shadow: 0 0 10px #39ff14, 0 0 30px rgba(57, 255, 20, 0.3);
+        }
+
+        /* Tables */
+        table {
+            width: 100%; border-collapse: collapse; margin-bottom: 20px;
+            background: rgba(13, 13, 43, 0.8);
+            border: 1px solid #333366;
+        }
+        th {
+            text-align: left; padding: 12px 16px;
+            font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 2px;
+            color: #ff2d95; text-transform: uppercase;
+            border-bottom: 2px solid #ff2d95;
+            text-shadow: 0 0 8px rgba(255, 45, 149, 0.3);
+        }
+        td {
+            padding: 10px 16px; font-size: 14px;
+            border-bottom: 1px solid #1a1a3e;
+            color: #c0c0e0;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255, 45, 149, 0.05); }
+        .right { text-align: right; }
+        td strong { color: #00f0ff; text-shadow: 0 0 5px rgba(0, 240, 255, 0.3); }
+
+        /* Add form */
+        .add-form {
+            background: linear-gradient(135deg, #1a0a2e, #0d0d2b);
+            border: 1px solid #00f0ff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+            padding: 20px; margin-bottom: 28px; display: none;
+        }
+        .add-form.open { display: block; }
+        .add-form .row { display: flex; gap: 12px; align-items: flex-end; }
+        .add-form label { display: block; font-size: 11px; color: #00f0ff; margin-bottom: 6px; letter-spacing: 1px; }
+        .add-form input {
+            padding: 8px 12px; background: #0a0a1a; color: #00f0ff;
+            border: 1px solid #00f0ff55; font-family: 'Share Tech Mono', monospace; font-size: 14px; width: 200px;
+            box-shadow: inset 0 0 8px rgba(0, 240, 255, 0.05);
+        }
+        .add-form input:focus { outline: none; border-color: #00f0ff; box-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
+
+        .toggle-btn {
+            background: none; border: 1px solid #00f0ff; color: #00f0ff; padding: 8px 18px;
+            font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 2px;
+            cursor: pointer; margin-bottom: 16px; transition: all 0.2s;
+            text-shadow: 0 0 5px rgba(0, 240, 255, 0.3);
+        }
+        .toggle-btn:hover {
+            background: #00f0ff15; box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            padding: 8px 20px; border: 1px solid #ff2d95; background: #ff2d9522; color: #ff2d95;
+            font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 1px; cursor: pointer;
+            text-shadow: 0 0 8px rgba(255, 45, 149, 0.5);
+        }
+        .btn-primary:hover { background: #ff2d9544; box-shadow: 0 0 20px rgba(255, 45, 149, 0.3); }
+
+        .btn-sm {
+            padding: 4px 10px; font-size: 10px; background: none; color: #00f0ff;
+            border: 1px solid #00f0ff44; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;
+        }
+        .btn-sm:hover { border-color: #00f0ff; box-shadow: 0 0 8px rgba(0, 240, 255, 0.3); }
+        .btn-del {
+            padding: 4px 10px; font-size: 10px; background: none; color: #ff2d9577;
+            border: 1px solid #ff2d9533; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;
+        }
+        .btn-del:hover { color: #ff2d95; border-color: #ff2d95; box-shadow: 0 0 8px rgba(255, 45, 149, 0.3); }
+
+        /* Bar chart */
+        .bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 200px; margin: 16px 0 32px; padding: 0 8px; }
+        .bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .bar {
+            width: 100%; max-width: 60px; border-radius: 0;
+            background: linear-gradient(180deg, #ff2d95, #b042ff);
+            box-shadow: 0 0 15px rgba(255, 45, 149, 0.4), 0 0 30px rgba(176, 66, 255, 0.2);
+            position: relative;
+        }
+        .bar::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: #fff; opacity: 0.6;
+        }
+        .bar-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px; color: #8888cc; margin-top: 8px; letter-spacing: 1px;
+        }
+        .bar-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px; color: #ffe14d; margin-bottom: 4px;
+            text-shadow: 0 0 5px rgba(255, 225, 77, 0.3);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block; padding: 3px 10px; font-size: 10px; font-weight: 600;
+            letter-spacing: 1px; font-family: 'Orbitron', sans-serif;
+            border: 1px solid;
+        }
+        .badge.quarterly { border-color: #39ff14; color: #39ff14; text-shadow: 0 0 5px rgba(57, 255, 20, 0.3); }
+        .badge.semi { border-color: #ffe14d; color: #ffe14d; text-shadow: 0 0 5px rgba(255, 225, 77, 0.3); }
+        .badge.monthly { border-color: #00f0ff; color: #00f0ff; text-shadow: 0 0 5px rgba(0, 240, 255, 0.3); }
+        .badge.annual { border-color: #b042ff; color: #b042ff; text-shadow: 0 0 5px rgba(176, 66, 255, 0.3); }
+
+        /* Pages */
+        .page { display: none; }
+        .page.active { display: block; }
+        .cur-note { font-size: 13px; color: #5555aa; margin-bottom: 24px; letter-spacing: 1px; }
+
+        /* Sun / horizon deco */
+        .sun-deco {
+            width: 100%; height: 80px; margin: -8px 0 24px;
+            background:
+                radial-gradient(ellipse at 50% 100%, #ff2d9533 0%, transparent 60%),
+                repeating-linear-gradient(0deg, transparent, transparent 4px, #ff2d9508 4px, #ff2d9508 5px);
+            position: relative; overflow: hidden;
+        }
+
+        /* Percentage bar for breakdown */
+        .pct-bar-bg {
+            width: 100%; height: 6px; background: #1a1a3e; position: relative; margin-top: 4px;
+        }
+        .pct-bar-fill {
+            height: 100%; background: linear-gradient(90deg, #ff2d95, #ffe14d);
+            box-shadow: 0 0 8px rgba(255, 45, 149, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <div class="sidebar-title">Dividend Tracker</div>
+    <div style="font-size:10px; color:#5555aa; margin: -14px 0 24px; letter-spacing:3px; font-family:'Orbitron',sans-serif;">RETRO EDITION</div>
+
+    <label>Display Currency</label>
+    <select id="currency" onchange="switchCurrency()">
+        <option value="EUR" selected>EUR</option>
+        <option value="USD">USD</option>
+        <option value="HUF">HUF</option>
+    </select>
+
+    <div class="sidebar-title" style="margin-bottom:12px;">Navigate</div>
+    <button class="nav-item active" onclick="showPage('portfolio', this)">Portfolio</button>
+    <button class="nav-item" onclick="showPage('calendar', this)">Div Calendar</button>
+    <button class="nav-item" onclick="showPage('summary', this)">Summary</button>
+
+    <div style="position:absolute; bottom:24px; left:16px; right:16px; text-align:center;">
+        <div style="font-size:9px; color:#333366; letter-spacing:2px; font-family:'Orbitron',sans-serif;">SYS.ONLINE</div>
+        <div style="font-size:9px; color:#39ff14; letter-spacing:1px; margin-top:4px; text-shadow:0 0 5px #39ff14;">
+            &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;
+        </div>
+    </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+    <!-- ==================== PORTFOLIO ==================== -->
+    <div id="portfolio" class="page active">
+        <h1>PORTFOLIO</h1>
+        <div class="sun-deco"></div>
+
+        <button class="toggle-btn" onclick="toggleForm()">[ + ADD HOLDING ]</button>
+
+        <div class="add-form" id="addForm">
+            <div class="row">
+                <div>
+                    <label>Ticker</label>
+                    <input type="text" placeholder="AAPL" />
+                </div>
+                <div>
+                    <label>Shares</label>
+                    <input type="number" value="1.0" step="0.1" style="width:120px" />
+                </div>
+                <div>
+                    <button class="btn-primary">EXECUTE</button>
+                </div>
+            </div>
+        </div>
+
+        <p class="cur-note">// all values displayed in <span class="cur-display" style="color:#ff2d95;">EUR</span></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Ticker</th>
+                    <th>Company</th>
+                    <th class="right">Shares</th>
+                    <th class="right">Price (<span class="cur-display">EUR</span>)</th>
+                    <th class="right">Yield</th>
+                    <th class="right">Annual Div (<span class="cur-display">EUR</span>)</th>
+                    <th>Ex-Div</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>AAPL</strong></td>
+                    <td>Apple Inc.</td>
+                    <td class="right">25.000</td>
+                    <td class="right">189.42</td>
+                    <td class="right" style="color:#39ff14">0.56%</td>
+                    <td class="right">22.50</td>
+                    <td>2026-02-07</td>
+                    <td><button class="btn-sm">EDIT</button> <button class="btn-del">DEL</button></td>
+                </tr>
+                <tr>
+                    <td><strong>VWCE.DE</strong></td>
+                    <td>Vanguard FTSE All-World ETF</td>
+                    <td class="right">40.000</td>
+                    <td class="right">108.76</td>
+                    <td class="right" style="color:#39ff14">1.62%</td>
+                    <td class="right">70.46</td>
+                    <td>2026-06-18</td>
+                    <td><button class="btn-sm">EDIT</button> <button class="btn-del">DEL</button></td>
+                </tr>
+                <tr>
+                    <td><strong>O</strong></td>
+                    <td>Realty Income Corp.</td>
+                    <td class="right">50.000</td>
+                    <td class="right">53.88</td>
+                    <td class="right" style="color:#39ff14">5.72%</td>
+                    <td class="right">145.20</td>
+                    <td>2026-04-01</td>
+                    <td><button class="btn-sm">EDIT</button> <button class="btn-del">DEL</button></td>
+                </tr>
+                <tr>
+                    <td><strong>MSFT</strong></td>
+                    <td>Microsoft Corporation</td>
+                    <td class="right">10.000</td>
+                    <td class="right">384.60</td>
+                    <td class="right" style="color:#39ff14">0.74%</td>
+                    <td class="right">28.40</td>
+                    <td>2026-05-15</td>
+                    <td><button class="btn-sm">EDIT</button> <button class="btn-del">DEL</button></td>
+                </tr>
+                <tr>
+                    <td><strong>NOVO-B.CO</strong></td>
+                    <td>Novo Nordisk A/S</td>
+                    <td class="right">30.000</td>
+                    <td class="right">94.50</td>
+                    <td class="right" style="color:#39ff14">1.38%</td>
+                    <td class="right">39.12</td>
+                    <td>2026-03-20</td>
+                    <td><button class="btn-sm">EDIT</button> <button class="btn-del">DEL</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ==================== DIVIDEND CALENDAR ==================== -->
+    <div id="calendar" class="page">
+        <h1>DIVIDEND CALENDAR</h1>
+        <div class="sun-deco"></div>
+
+        <p class="cur-note">// estimated upcoming payments in <span class="cur-display" style="color:#ff2d95;">EUR</span></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Ticker</th>
+                    <th>Company</th>
+                    <th class="right">Per Share</th>
+                    <th class="right">Payout (<span class="cur-display">EUR</span>)</th>
+                    <th>Freq</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-04-15</td>
+                    <td><strong>O</strong></td>
+                    <td>Realty Income Corp.</td>
+                    <td class="right">0.2635</td>
+                    <td class="right" style="color:#ffe14d">13.18</td>
+                    <td><span class="badge monthly">MONTHLY</span></td>
+                </tr>
+                <tr>
+                    <td>2026-05-10</td>
+                    <td><strong>AAPL</strong></td>
+                    <td>Apple Inc.</td>
+                    <td class="right">0.2500</td>
+                    <td class="right" style="color:#ffe14d">6.25</td>
+                    <td><span class="badge quarterly">QUARTERLY</span></td>
+                </tr>
+                <tr>
+                    <td>2026-05-15</td>
+                    <td><strong>O</strong></td>
+                    <td>Realty Income Corp.</td>
+                    <td class="right">0.2635</td>
+                    <td class="right" style="color:#ffe14d">13.18</td>
+                    <td><span class="badge monthly">MONTHLY</span></td>
+                </tr>
+                <tr>
+                    <td>2026-06-12</td>
+                    <td><strong>MSFT</strong></td>
+                    <td>Microsoft Corporation</td>
+                    <td class="right">0.7500</td>
+                    <td class="right" style="color:#ffe14d">7.50</td>
+                    <td><span class="badge quarterly">QUARTERLY</span></td>
+                </tr>
+                <tr>
+                    <td>2026-06-15</td>
+                    <td><strong>O</strong></td>
+                    <td>Realty Income Corp.</td>
+                    <td class="right">0.2635</td>
+                    <td class="right" style="color:#ffe14d">13.18</td>
+                    <td><span class="badge monthly">MONTHLY</span></td>
+                </tr>
+                <tr>
+                    <td>2026-06-20</td>
+                    <td><strong>VWCE.DE</strong></td>
+                    <td>Vanguard FTSE All-World ETF</td>
+                    <td class="right">1.7600</td>
+                    <td class="right" style="color:#ffe14d">70.40</td>
+                    <td><span class="badge annual">ANNUAL</span></td>
+                </tr>
+                <tr>
+                    <td>2026-07-15</td>
+                    <td><strong>O</strong></td>
+                    <td>Realty Income Corp.</td>
+                    <td class="right">0.2635</td>
+                    <td class="right" style="color:#ffe14d">13.18</td>
+                    <td><span class="badge monthly">MONTHLY</span></td>
+                </tr>
+                <tr>
+                    <td>2026-08-10</td>
+                    <td><strong>AAPL</strong></td>
+                    <td>Apple Inc.</td>
+                    <td class="right">0.2500</td>
+                    <td class="right" style="color:#ffe14d">6.25</td>
+                    <td><span class="badge quarterly">QUARTERLY</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Monthly Breakdown</h2>
+        <div class="bar-chart">
+            <div class="bar-col">
+                <div class="bar-value">13</div>
+                <div class="bar" style="height: 18px"></div>
+                <div class="bar-label">APR</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">19</div>
+                <div class="bar" style="height: 27px"></div>
+                <div class="bar-label">MAY</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">91</div>
+                <div class="bar" style="height: 140px"></div>
+                <div class="bar-label">JUN</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">13</div>
+                <div class="bar" style="height: 18px"></div>
+                <div class="bar-label">JUL</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">6</div>
+                <div class="bar" style="height: 9px"></div>
+                <div class="bar-label">AUG</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SUMMARY ==================== -->
+    <div id="summary" class="page">
+        <h1>PORTFOLIO SUMMARY</h1>
+        <div class="sun-deco"></div>
+
+        <p class="cur-note">// all values in <span class="cur-display" style="color:#ff2d95;">EUR</span></p>
+
+        <div class="metrics">
+            <div class="metric">
+                <div class="label">Portfolio Value</div>
+                <div class="value">14,143.20</div>
+            </div>
+            <div class="metric">
+                <div class="label">Annual Dividends</div>
+                <div class="value green">305.68</div>
+            </div>
+            <div class="metric">
+                <div class="label">Monthly Avg</div>
+                <div class="value">25.47</div>
+            </div>
+            <div class="metric">
+                <div class="label">Portfolio Yield</div>
+                <div class="value" style="color:#ffe14d; text-shadow: 0 0 10px #ffe14d;">2.16%</div>
+            </div>
+        </div>
+
+        <h2>Breakdown by Holding</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ticker</th>
+                    <th class="right">Value (<span class="cur-display">EUR</span>)</th>
+                    <th class="right">Annual Div (<span class="cur-display">EUR</span>)</th>
+                    <th class="right">% of Income</th>
+                    <th style="width:120px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>O</strong></td>
+                    <td class="right">2,694.00</td>
+                    <td class="right">145.20</td>
+                    <td class="right" style="color:#ffe14d">47.5%</td>
+                    <td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:47.5%"></div></div></td>
+                </tr>
+                <tr>
+                    <td><strong>VWCE.DE</strong></td>
+                    <td class="right">4,350.40</td>
+                    <td class="right">70.46</td>
+                    <td class="right" style="color:#ffe14d">23.1%</td>
+                    <td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:23.1%"></div></div></td>
+                </tr>
+                <tr>
+                    <td><strong>NOVO-B.CO</strong></td>
+                    <td class="right">2,835.00</td>
+                    <td class="right">39.12</td>
+                    <td class="right" style="color:#ffe14d">12.8%</td>
+                    <td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:12.8%"></div></div></td>
+                </tr>
+                <tr>
+                    <td><strong>MSFT</strong></td>
+                    <td class="right">3,846.00</td>
+                    <td class="right">28.40</td>
+                    <td class="right" style="color:#ffe14d">9.3%</td>
+                    <td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:9.3%"></div></div></td>
+                </tr>
+                <tr>
+                    <td><strong>AAPL</strong></td>
+                    <td class="right">4,735.50</td>
+                    <td class="right">22.50</td>
+                    <td class="right" style="color:#ffe14d">7.4%</td>
+                    <td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:7.4%"></div></div></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Dividend Distribution</h2>
+        <div class="bar-chart">
+            <div class="bar-col">
+                <div class="bar-value">145</div>
+                <div class="bar" style="height: 155px"></div>
+                <div class="bar-label">O</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">70</div>
+                <div class="bar" style="height: 75px"></div>
+                <div class="bar-label">VWCE</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">39</div>
+                <div class="bar" style="height: 42px"></div>
+                <div class="bar-label">NOVO</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">28</div>
+                <div class="bar" style="height: 30px"></div>
+                <div class="bar-label">MSFT</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">23</div>
+                <div class="bar" style="height: 24px"></div>
+                <div class="bar-label">AAPL</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function showPage(pageId, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function toggleForm() {
+        document.getElementById('addForm').classList.toggle('open');
+    }
+
+    function switchCurrency() {
+        const cur = document.getElementById('currency').value;
+        document.querySelectorAll('.cur-display').forEach(el => el.textContent = cur);
+    }
+</script>
+
+</body>
+</html>

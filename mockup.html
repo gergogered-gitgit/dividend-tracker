@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dividend Tracker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { transition: background 0.4s, color 0.4s; }
+
+        /* ============================================================
+           THEME VARIABLES
+           ============================================================ */
+
+        /* --- DEFAULT (Streamlit Dark) --- */
+        body.theme-default {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0e1117; color: #fafafa;
+        }
+        .theme-default .sidebar {
+            background: #262730; border-right: 1px solid #333;
+        }
+        .theme-default .sidebar-title { color: #aaa; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; letter-spacing: 0; text-shadow: none; }
+        .theme-default .sidebar-subtitle { display: none; }
+        .theme-default .sidebar label { color: #ccc; }
+        .theme-default .sidebar select { background: #0e1117; color: #fafafa; border: 1px solid #555; border-radius: 6px; }
+        .theme-default .nav-item { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 15px; color: #ccc; letter-spacing: 0; }
+        .theme-default .nav-item:hover { background: #333; }
+        .theme-default .nav-item.active { background: #ff4b4b22; color: #ff4b4b; font-weight: 600; }
+        .theme-default .sys-status { display: none; }
+        .theme-default .main { background: #0e1117; }
+        .theme-default .main h1 { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 28px; color: #fafafa; background: none; -webkit-text-fill-color: unset; filter: none; }
+        .theme-default .main h2 { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 20px; color: #fafafa; text-shadow: none; letter-spacing: 0; }
+        .theme-default .sun-deco { display: none; }
+        .theme-default .metric { background: #262730; border: 1px solid #333; border-radius: 8px; }
+        .theme-default .metric::before { display: none; }
+        .theme-default .metric .label { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; color: #aaa; letter-spacing: 0; }
+        .theme-default .metric .value { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 26px; color: #fafafa; text-shadow: none; }
+        .theme-default .metric .value.green { color: #21c354; text-shadow: none; }
+        .theme-default .metric .value.accent { color: #fafafa; text-shadow: none; }
+        .theme-default table { background: #262730; border: none; border-radius: 8px; overflow: hidden; }
+        .theme-default th { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; color: #aaa; border-bottom: 1px solid #333; text-shadow: none; letter-spacing: 0; }
+        .theme-default td { color: #fafafa; border-bottom: 1px solid #1e1e2a; }
+        .theme-default td strong { color: #fafafa; text-shadow: none; }
+        .theme-default .yield-col { color: #fafafa !important; }
+        .theme-default .payout-col { color: #fafafa !important; }
+        .theme-default tr:hover td { background: #1a1a2e; }
+        .theme-default .toggle-btn { background: none; border: 1px solid #555; color: #ccc; border-radius: 6px; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; letter-spacing: 0; }
+        .theme-default .toggle-btn:hover { border-color: #ff4b4b; color: #ff4b4b; }
+        .theme-default .add-form { background: #262730; border: 1px solid #333; border-radius: 8px; }
+        .theme-default .add-form label { color: #ccc; font-size: 13px; letter-spacing: 0; }
+        .theme-default .add-form input { background: #0e1117; color: #fafafa; border: 1px solid #555; border-radius: 6px; }
+        .theme-default .btn-primary { background: #ff4b4b; color: white; border: none; border-radius: 6px; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; letter-spacing: 0; text-shadow: none; }
+        .theme-default .btn-primary:hover { background: #e03e3e; box-shadow: none; }
+        .theme-default .btn-sm { background: #333; color: #ccc; border: 1px solid #555; border-radius: 4px; font-family: 'Segoe UI', system-ui, sans-serif; letter-spacing: 0; }
+        .theme-default .btn-sm:hover { border-color: #ff4b4b; color: #ff4b4b; box-shadow: none; }
+        .theme-default .btn-del { color: #888; border: 1px solid #444; border-radius: 4px; font-family: 'Segoe UI', system-ui, sans-serif; letter-spacing: 0; }
+        .theme-default .btn-del:hover { border-color: #ff4b4b; color: #ff4b4b; box-shadow: none; }
+        .theme-default .bar { background: #ff4b4b; border-radius: 4px 4px 0 0; box-shadow: none; }
+        .theme-default .bar::after { display: none; }
+        .theme-default .bar-label { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px; color: #aaa; letter-spacing: 0; }
+        .theme-default .bar-value { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px; color: #ccc; text-shadow: none; }
+        .theme-default .badge { border: none; border-radius: 10px; font-family: 'Segoe UI', system-ui, sans-serif; text-shadow: none; }
+        .theme-default .badge.quarterly { background: #21c35422; color: #21c354; }
+        .theme-default .badge.monthly { background: #4b7bff22; color: #4b7bff; }
+        .theme-default .badge.annual { background: #a855f722; color: #a855f7; }
+        .theme-default .cur-note { color: #666; }
+        .theme-default .cur-display { color: inherit; }
+        .theme-default .pct-bar-bg { background: #1a1a3e; }
+        .theme-default .pct-bar-fill { background: #ff4b4b; box-shadow: none; }
+        .theme-default .pct-col { color: #fafafa !important; }
+        .theme-default .scanline { display: none; }
+        .theme-default .theme-select { background: #0e1117; color: #fafafa; border: 1px solid #555; border-radius: 6px; }
+
+        /* --- 80s RETRO --- */
+        body.theme-80s {
+            font-family: 'Share Tech Mono', monospace;
+            background: #0a0a1a; color: #e0e0ff;
+        }
+        .theme-80s .scanline { display: block; }
+        .theme-80s .sidebar {
+            background: linear-gradient(180deg, #1a0a2e 0%, #0d0d2b 100%);
+            border-right: 2px solid #ff2d95; box-shadow: 2px 0 20px rgba(255, 45, 149, 0.3);
+        }
+        .theme-80s .sidebar-title { font-family: 'Orbitron', sans-serif; font-size: 11px; color: #ff2d95; letter-spacing: 3px; text-shadow: 0 0 10px #ff2d95; text-transform: uppercase; }
+        .theme-80s .sidebar-subtitle { display: block; font-size: 10px; color: #5555aa; letter-spacing: 3px; font-family: 'Orbitron', sans-serif; margin: -14px 0 24px; }
+        .theme-80s .sidebar label { color: #00f0ff; font-size: 12px; letter-spacing: 1px; }
+        .theme-80s .sidebar select { background: #0a0a1a; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 0; font-family: 'Share Tech Mono', monospace; box-shadow: 0 0 8px rgba(0, 240, 255, 0.2); }
+        .theme-80s .nav-item { font-family: 'Orbitron', sans-serif; font-size: 12px; color: #8888aa; letter-spacing: 1px; }
+        .theme-80s .nav-item:hover { color: #ff2d95; border-color: #ff2d9544; background: #ff2d9510; }
+        .theme-80s .nav-item.active { color: #ff2d95; border: 1px solid #ff2d95; background: linear-gradient(90deg, #ff2d9515, transparent); text-shadow: 0 0 10px #ff2d95; }
+        .theme-80s .sys-status { display: block; }
+        .theme-80s .main {
+            background: #0a0a1a;
+            background-image: linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .theme-80s .main h1 {
+            font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 900;
+            background: linear-gradient(90deg, #ff2d95, #ff6b6b, #ffe14d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            filter: drop-shadow(0 0 20px rgba(255, 45, 149, 0.4));
+        }
+        .theme-80s .main h2 { font-family: 'Orbitron', sans-serif; font-size: 16px; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.5); letter-spacing: 2px; }
+        .theme-80s .sun-deco { display: block; }
+        .theme-80s .metric {
+            background: linear-gradient(135deg, #1a0a2e, #0d0d2b); border: 1px solid #b042ff; border-radius: 0;
+            box-shadow: 0 0 15px rgba(176, 66, 255, 0.2), inset 0 0 30px rgba(176, 66, 255, 0.03);
+        }
+        .theme-80s .metric::before { display: block; background: linear-gradient(90deg, transparent, #b042ff, transparent); }
+        .theme-80s .metric .label { font-family: 'Orbitron', sans-serif; font-size: 11px; color: #8888cc; letter-spacing: 2px; text-transform: uppercase; }
+        .theme-80s .metric .value { font-family: 'Orbitron', sans-serif; font-size: 24px; color: #e0e0ff; text-shadow: none; }
+        .theme-80s .metric .value.green { color: #39ff14; text-shadow: 0 0 10px #39ff14, 0 0 30px rgba(57, 255, 20, 0.3); }
+        .theme-80s .metric .value.accent { color: #ffe14d; text-shadow: 0 0 10px #ffe14d; }
+        .theme-80s table { background: rgba(13, 13, 43, 0.8); border: 1px solid #333366; border-radius: 0; }
+        .theme-80s th { font-family: 'Orbitron', sans-serif; font-size: 10px; color: #ff2d95; letter-spacing: 2px; border-bottom: 2px solid #ff2d95; text-shadow: 0 0 8px rgba(255, 45, 149, 0.3); }
+        .theme-80s td { color: #c0c0e0; border-bottom: 1px solid #1a1a3e; }
+        .theme-80s td strong { color: #00f0ff; text-shadow: 0 0 5px rgba(0, 240, 255, 0.3); }
+        .theme-80s .yield-col { color: #39ff14 !important; }
+        .theme-80s .payout-col { color: #ffe14d !important; }
+        .theme-80s tr:hover td { background: rgba(255, 45, 149, 0.05); }
+        .theme-80s .toggle-btn { border: 1px solid #00f0ff; color: #00f0ff; font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 2px; border-radius: 0; text-shadow: 0 0 5px rgba(0, 240, 255, 0.3); }
+        .theme-80s .toggle-btn:hover { background: #00f0ff15; box-shadow: 0 0 20px rgba(0, 240, 255, 0.3); }
+        .theme-80s .add-form { background: linear-gradient(135deg, #1a0a2e, #0d0d2b); border: 1px solid #00f0ff; border-radius: 0; box-shadow: 0 0 15px rgba(0, 240, 255, 0.15); }
+        .theme-80s .add-form label { color: #00f0ff; font-size: 11px; letter-spacing: 1px; }
+        .theme-80s .add-form input { background: #0a0a1a; color: #00f0ff; border: 1px solid #00f0ff55; font-family: 'Share Tech Mono', monospace; border-radius: 0; }
+        .theme-80s .btn-primary { background: #ff2d9522; color: #ff2d95; border: 1px solid #ff2d95; border-radius: 0; font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 1px; text-shadow: 0 0 8px rgba(255, 45, 149, 0.5); }
+        .theme-80s .btn-primary:hover { background: #ff2d9544; box-shadow: 0 0 20px rgba(255, 45, 149, 0.3); }
+        .theme-80s .btn-sm { background: none; color: #00f0ff; border: 1px solid #00f0ff44; font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; border-radius: 0; }
+        .theme-80s .btn-sm:hover { border-color: #00f0ff; box-shadow: 0 0 8px rgba(0, 240, 255, 0.3); }
+        .theme-80s .btn-del { color: #ff2d9577; border: 1px solid #ff2d9533; font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; border-radius: 0; }
+        .theme-80s .btn-del:hover { color: #ff2d95; border-color: #ff2d95; box-shadow: 0 0 8px rgba(255, 45, 149, 0.3); }
+        .theme-80s .bar { background: linear-gradient(180deg, #ff2d95, #b042ff); border-radius: 0; box-shadow: 0 0 15px rgba(255, 45, 149, 0.4); }
+        .theme-80s .bar::after { display: block; }
+        .theme-80s .bar-label { font-family: 'Orbitron', sans-serif; font-size: 10px; color: #8888cc; letter-spacing: 1px; }
+        .theme-80s .bar-value { font-family: 'Orbitron', sans-serif; font-size: 11px; color: #ffe14d; text-shadow: 0 0 5px rgba(255, 225, 77, 0.3); }
+        .theme-80s .badge { border-radius: 0; font-family: 'Orbitron', sans-serif; border: 1px solid; }
+        .theme-80s .badge.quarterly { border-color: #39ff14; color: #39ff14; background: none; text-shadow: 0 0 5px rgba(57, 255, 20, 0.3); }
+        .theme-80s .badge.monthly { border-color: #00f0ff; color: #00f0ff; background: none; text-shadow: 0 0 5px rgba(0, 240, 255, 0.3); }
+        .theme-80s .badge.annual { border-color: #b042ff; color: #b042ff; background: none; text-shadow: 0 0 5px rgba(176, 66, 255, 0.3); }
+        .theme-80s .cur-note { color: #5555aa; letter-spacing: 1px; }
+        .theme-80s .cur-display { color: #ff2d95; }
+        .theme-80s .pct-bar-bg { background: #1a1a3e; }
+        .theme-80s .pct-bar-fill { background: linear-gradient(90deg, #ff2d95, #ffe14d); box-shadow: 0 0 8px rgba(255, 45, 149, 0.5); }
+        .theme-80s .pct-col { color: #ffe14d !important; }
+        .theme-80s .theme-select { background: #0a0a1a; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 0; font-family: 'Share Tech Mono', monospace; }
+
+        /* --- TESLA --- */
+        body.theme-tesla {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #000000; color: #ffffff;
+        }
+        .theme-tesla .scanline { display: none; }
+        .theme-tesla .sidebar {
+            background: #000000; border-right: 1px solid #1a1a1a;
+        }
+        .theme-tesla .sidebar-title { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: #ffffff; letter-spacing: 4px; text-transform: uppercase; text-shadow: none; }
+        .theme-tesla .sidebar-subtitle { display: none; }
+        .theme-tesla .sidebar label { color: #6b6b6b; font-size: 11px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; }
+        .theme-tesla .sidebar select { background: #111111; color: #ffffff; border: 1px solid #2a2a2a; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 13px; box-shadow: none; }
+        .theme-tesla .nav-item { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 400; color: #6b6b6b; letter-spacing: 0.5px; border-radius: 4px; }
+        .theme-tesla .nav-item:hover { color: #ffffff; background: #111111; }
+        .theme-tesla .nav-item.active { color: #ffffff; font-weight: 600; background: #111111; border: none; text-shadow: none; }
+        .theme-tesla .sys-status { display: none; }
+        .theme-tesla .main { background: #000000; }
+        .theme-tesla .main h1 { font-family: 'Inter', sans-serif; font-size: 36px; font-weight: 300; color: #ffffff; letter-spacing: -0.5px; background: none; -webkit-text-fill-color: unset; filter: none; }
+        .theme-tesla .main h2 { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; color: #6b6b6b; text-shadow: none; letter-spacing: 2px; text-transform: uppercase; }
+        .theme-tesla .sun-deco { display: none; }
+        .theme-tesla .metric {
+            background: #111111; border: 1px solid #1a1a1a; border-radius: 8px;
+            box-shadow: none;
+        }
+        .theme-tesla .metric::before { display: none; }
+        .theme-tesla .metric .label { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500; color: #6b6b6b; letter-spacing: 1px; text-transform: uppercase; }
+        .theme-tesla .metric .value { font-family: 'Inter', sans-serif; font-size: 28px; font-weight: 300; color: #ffffff; text-shadow: none; }
+        .theme-tesla .metric .value.green { color: #18b818; text-shadow: none; }
+        .theme-tesla .metric .value.accent { color: #e31937; text-shadow: none; }
+        .theme-tesla table { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 8px; overflow: hidden; }
+        .theme-tesla th { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; color: #6b6b6b; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid #1a1a1a; text-shadow: none; }
+        .theme-tesla td { color: #d4d4d4; border-bottom: 1px solid #111111; font-weight: 300; }
+        .theme-tesla td strong { color: #ffffff; font-weight: 600; text-shadow: none; }
+        .theme-tesla .yield-col { color: #18b818 !important; }
+        .theme-tesla .payout-col { color: #d4d4d4 !important; }
+        .theme-tesla tr:hover td { background: #111111; }
+        .theme-tesla .toggle-btn { background: none; border: 1px solid #2a2a2a; color: #888888; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 0.5px; text-shadow: none; }
+        .theme-tesla .toggle-btn:hover { border-color: #e31937; color: #e31937; }
+        .theme-tesla .add-form { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 8px; box-shadow: none; }
+        .theme-tesla .add-form label { color: #6b6b6b; font-size: 11px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; }
+        .theme-tesla .add-form input { background: #111111; color: #ffffff; border: 1px solid #2a2a2a; border-radius: 4px; font-family: 'Inter', sans-serif; }
+        .theme-tesla .add-form input:focus { outline: none; border-color: #e31937; }
+        .theme-tesla .btn-primary { background: #e31937; color: white; border: none; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-shadow: none; }
+        .theme-tesla .btn-primary:hover { background: #cc1630; box-shadow: none; }
+        .theme-tesla .btn-sm { background: none; color: #6b6b6b; border: 1px solid #2a2a2a; border-radius: 4px; font-family: 'Inter', sans-serif; font-weight: 500; letter-spacing: 0; }
+        .theme-tesla .btn-sm:hover { color: #ffffff; border-color: #444; box-shadow: none; }
+        .theme-tesla .btn-del { color: #4a4a4a; border: 1px solid #1a1a1a; border-radius: 4px; font-family: 'Inter', sans-serif; font-weight: 500; letter-spacing: 0; }
+        .theme-tesla .btn-del:hover { color: #e31937; border-color: #e31937; box-shadow: none; }
+        .theme-tesla .bar { background: #e31937; border-radius: 2px 2px 0 0; box-shadow: none; }
+        .theme-tesla .bar::after { display: none; }
+        .theme-tesla .bar-label { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500; color: #6b6b6b; letter-spacing: 0; }
+        .theme-tesla .bar-value { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500; color: #999; text-shadow: none; }
+        .theme-tesla .badge { border: none; border-radius: 4px; font-family: 'Inter', sans-serif; font-weight: 600; text-shadow: none; }
+        .theme-tesla .badge.quarterly { background: #18b81818; color: #18b818; }
+        .theme-tesla .badge.monthly { background: #3b82f618; color: #3b82f6; }
+        .theme-tesla .badge.annual { background: #e3193718; color: #e31937; }
+        .theme-tesla .cur-note { color: #3a3a3a; letter-spacing: 0; }
+        .theme-tesla .cur-display { color: #6b6b6b; }
+        .theme-tesla .pct-bar-bg { background: #1a1a1a; border-radius: 2px; }
+        .theme-tesla .pct-bar-fill { background: #e31937; box-shadow: none; border-radius: 2px; }
+        .theme-tesla .pct-col { color: #d4d4d4 !important; }
+        .theme-tesla .theme-select { background: #111111; color: #ffffff; border: 1px solid #2a2a2a; border-radius: 4px; font-family: 'Inter', sans-serif; }
+
+        /* ============================================================
+           STRUCTURAL STYLES (shared across themes)
+           ============================================================ */
+
+        .scanline {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+            pointer-events: none; z-index: 9999; display: none;
+        }
+
+        .sidebar {
+            position: fixed; left: 0; top: 0; bottom: 0; width: 250px;
+            padding: 24px 16px; transition: background 0.4s, border 0.4s;
+        }
+        .sidebar-title { margin-bottom: 20px; text-transform: uppercase; }
+        .sidebar-subtitle { margin: -14px 0 24px; }
+        .sidebar label { display: block; margin-bottom: 6px; }
+        .sidebar select { width: 100%; padding: 8px 10px; font-size: 14px; margin-bottom: 12px; transition: all 0.3s; }
+        .sidebar select:focus { outline: none; }
+        .nav-item {
+            display: block; width: 100%; text-align: left; padding: 10px 14px; margin-bottom: 4px;
+            background: none; border: 1px solid transparent; cursor: pointer; transition: all 0.2s;
+        }
+        .sys-status {
+            position: absolute; bottom: 24px; left: 16px; right: 16px; text-align: center;
+        }
+        .sys-status-label { font-size: 9px; color: #333366; letter-spacing: 2px; font-family: 'Orbitron', sans-serif; }
+        .sys-status-bar { font-size: 9px; color: #39ff14; letter-spacing: 1px; margin-top: 4px; text-shadow: 0 0 5px #39ff14; }
+
+        .main { margin-left: 250px; padding: 32px 48px; max-width: 1100px; min-height: 100vh; transition: background 0.4s; }
+        .main h1 { margin-bottom: 8px; }
+        .main h2 { margin: 32px 0 16px; }
+
+        .sun-deco {
+            width: 100%; height: 80px; margin: -8px 0 24px; display: none;
+            background: radial-gradient(ellipse at 50% 100%, #ff2d9533 0%, transparent 60%), repeating-linear-gradient(0deg, transparent, transparent 4px, #ff2d9508 4px, #ff2d9508 5px);
+        }
+
+        .metrics { display: flex; gap: 16px; margin: 24px 0 32px; }
+        .metric { flex: 1; padding: 18px 20px; position: relative; overflow: hidden; transition: all 0.4s; }
+        .metric::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; display: none; }
+        .metric .label { margin-bottom: 8px; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; transition: all 0.4s; }
+        th { text-align: left; padding: 12px 16px; }
+        td { padding: 10px 16px; font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        .right { text-align: right; }
+
+        .add-form { padding: 20px; margin-bottom: 28px; display: none; transition: all 0.4s; }
+        .add-form.open { display: block; }
+        .add-form .row { display: flex; gap: 12px; align-items: flex-end; }
+        .add-form label { display: block; margin-bottom: 4px; }
+        .add-form input { padding: 8px 12px; font-size: 14px; width: 200px; transition: all 0.3s; }
+        .add-form input:focus { outline: none; }
+
+        .toggle-btn { padding: 8px 18px; cursor: pointer; margin-bottom: 16px; transition: all 0.2s; background: none; }
+        .btn-primary { padding: 8px 20px; cursor: pointer; transition: all 0.2s; }
+        .btn-sm { padding: 4px 10px; font-size: 11px; cursor: pointer; background: none; transition: all 0.2s; }
+        .btn-del { padding: 4px 10px; font-size: 11px; cursor: pointer; background: none; border-radius: 0; transition: all 0.2s; }
+
+        .bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 200px; margin: 16px 0 32px; padding: 0 8px; }
+        .bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .bar { width: 100%; max-width: 60px; transition: all 0.4s; position: relative; }
+        .bar::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: #fff; opacity: 0.6; display: none; }
+        .bar-label { margin-top: 8px; }
+        .bar-value { margin-bottom: 4px; }
+        .bar-value:empty, .bar-col .bar[style*="height:0px"] + .bar-label { opacity: 0.3; }
+
+        .badge { display: inline-block; padding: 3px 10px; font-size: 10px; font-weight: 600; letter-spacing: 1px; }
+        .cur-note { font-size: 13px; margin-bottom: 24px; }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .pct-bar-bg { width: 100%; height: 6px; position: relative; margin-top: 4px; }
+        .pct-bar-fill { height: 100%; transition: all 0.4s; }
+
+        .theme-select { width: 100%; padding: 8px 10px; font-size: 14px; margin-bottom: 24px; transition: all 0.3s; }
+        .theme-select:focus { outline: none; }
+
+        .divider { height: 1px; background: #222; margin: 16px 0 20px; }
+        .sidebar-bottom { position: absolute; bottom: 24px; left: 16px; right: 16px; }
+
+        /* Calendar grid */
+        .cal-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .cal-month-label { font-size: 20px; font-weight: 600; min-width: 180px; text-align: center; }
+        .cal-nav-btn {
+            padding: 6px 14px; cursor: pointer; font-size: 16px;
+            background: none; color: inherit; border: 1px solid transparent; transition: all 0.2s;
+        }
+        .cal-today-btn { font-size: 12px; margin-left: 8px; }
+
+        .cal-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 16px;
+        }
+        .cal-header {
+            text-align: center; padding: 8px 0; font-size: 12px; font-weight: 600; opacity: 0.5;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .cal-day {
+            min-height: 80px; padding: 6px 8px; border: 1px solid transparent;
+            position: relative; transition: all 0.2s; border-radius: 4px;
+        }
+        .cal-day-number { font-size: 13px; opacity: 0.5; margin-bottom: 4px; }
+        .cal-day.has-dividend { cursor: pointer; }
+        .cal-day.empty { opacity: 0; pointer-events: none; }
+        .cal-day.today .cal-day-number { font-weight: 700; opacity: 1; }
+
+        .cal-div-chip {
+            display: block; padding: 3px 6px; margin-bottom: 3px; border-radius: 3px;
+            font-size: 10px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .cal-div-chip .chip-ticker { font-weight: 700; }
+        .cal-div-chip .chip-amount { float: right; margin-left: 6px; }
+
+        .cal-month-total {
+            padding: 12px 16px; margin-bottom: 28px; font-size: 14px;
+            border-radius: 4px; display: flex; justify-content: space-between;
+        }
+        .cal-month-total .total-label { opacity: 0.6; }
+        .cal-month-total .total-value { font-weight: 700; }
+
+        /* Theme: Default */
+        .theme-default .cal-nav-btn { border-color: #555; border-radius: 6px; }
+        .theme-default .cal-nav-btn:hover { border-color: #ff4b4b; color: #ff4b4b; }
+        .theme-default .cal-month-label { font-family: 'Segoe UI', system-ui, sans-serif; }
+        .theme-default .cal-day { background: #262730; border-color: #333; }
+        .theme-default .cal-day.has-dividend { border-color: #ff4b4b44; }
+        .theme-default .cal-day.has-dividend:hover { border-color: #ff4b4b; background: #2a2a3a; }
+        .theme-default .cal-day.today { border-color: #ff4b4b; box-shadow: inset 0 0 0 1px #ff4b4b; }
+        .theme-default .cal-div-chip { background: #ff4b4b22; color: #fafafa; }
+        .theme-default .cal-month-total { background: #262730; border: 1px solid #333; }
+        .theme-default .cal-header { color: #aaa; }
+
+        /* Theme: 80s */
+        .theme-80s .cal-nav-btn { border-color: #00f0ff44; font-family: 'Orbitron', sans-serif; font-size: 14px; }
+        .theme-80s .cal-nav-btn:hover { border-color: #00f0ff; color: #00f0ff; text-shadow: 0 0 8px rgba(0,240,255,0.5); }
+        .theme-80s .cal-today-btn { font-size: 10px; }
+        .theme-80s .cal-month-label { font-family: 'Orbitron', sans-serif; color: #ffe14d; text-shadow: 0 0 10px rgba(255,225,77,0.4); }
+        .theme-80s .cal-day { background: rgba(13,13,43,0.6); border-color: #333366; }
+        .theme-80s .cal-day.has-dividend { border-color: #ff2d9566; }
+        .theme-80s .cal-day.has-dividend:hover { border-color: #ff2d95; background: #1a0a2e; box-shadow: 0 0 12px rgba(255,45,149,0.2); }
+        .theme-80s .cal-day.today { border-color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.3); }
+        .theme-80s .cal-day.today .cal-day-number { color: #00f0ff; text-shadow: 0 0 5px rgba(0,240,255,0.5); }
+        .theme-80s .cal-div-chip { background: #ff2d9522; color: #e0e0ff; }
+        .theme-80s .cal-div-chip .chip-amount { color: #ffe14d; }
+        .theme-80s .cal-month-total { background: rgba(13,13,43,0.8); border: 1px solid #b042ff44; }
+        .theme-80s .cal-month-total .total-value { color: #39ff14; text-shadow: 0 0 8px rgba(57,255,20,0.4); }
+        .theme-80s .cal-header { color: #8888cc; font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 2px; }
+
+        /* Theme: Tesla */
+        .theme-tesla .cal-nav-btn { border-color: #2a2a2a; border-radius: 4px; font-family: 'Inter', sans-serif; }
+        .theme-tesla .cal-nav-btn:hover { border-color: #e31937; color: #e31937; }
+        .theme-tesla .cal-today-btn { font-size: 12px; font-weight: 500; }
+        .theme-tesla .cal-month-label { font-family: 'Inter', sans-serif; font-weight: 300; font-size: 22px; }
+        .theme-tesla .cal-day { background: #0a0a0a; border-color: #1a1a1a; }
+        .theme-tesla .cal-day.has-dividend { border-color: #e3193733; }
+        .theme-tesla .cal-day.has-dividend:hover { border-color: #e31937; background: #111; }
+        .theme-tesla .cal-day.today { border-color: #e31937; }
+        .theme-tesla .cal-day.today .cal-day-number { color: #e31937; }
+        .theme-tesla .cal-div-chip { background: #e3193718; color: #d4d4d4; }
+        .theme-tesla .cal-div-chip .chip-amount { color: #ffffff; }
+        .theme-tesla .cal-month-total { background: #0a0a0a; border: 1px solid #1a1a1a; }
+        .theme-tesla .cal-month-total .total-value { color: #18b818; }
+        .theme-tesla .cal-header { color: #6b6b6b; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 11px; letter-spacing: 1px; }
+
+        /* Search dropdown */
+        .search-wrapper { position: relative; flex: 1; min-width: 280px; }
+        .search-input { width: 100% !important; }
+        .search-results {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+            max-height: 260px; overflow-y: auto; display: none;
+        }
+        .search-results.open { display: block; }
+        .search-result {
+            padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid transparent; transition: background 0.15s;
+        }
+        .search-result:last-child { border-bottom: none; }
+        .search-result .sr-ticker { font-weight: 600; min-width: 80px; }
+        .search-result .sr-name { flex: 1; margin-left: 12px; opacity: 0.7; font-size: 13px; }
+        .search-result .sr-type { font-size: 11px; opacity: 0.5; margin-left: 12px; }
+        .search-result .sr-exchange { font-size: 11px; opacity: 0.4; margin-left: 8px; }
+
+        /* Theme-specific search styles */
+        .theme-default .search-results { background: #262730; border: 1px solid #555; border-radius: 0 0 6px 6px; border-top: none; }
+        .theme-default .search-result:hover { background: #333; }
+        .theme-default .search-result .sr-ticker { color: #fafafa; }
+
+        .theme-80s .search-results { background: #0d0d2b; border: 1px solid #00f0ff; border-top: none; box-shadow: 0 4px 20px rgba(0, 240, 255, 0.15); }
+        .theme-80s .search-result:hover { background: #1a0a2e; }
+        .theme-80s .search-result .sr-ticker { color: #00f0ff; text-shadow: 0 0 5px rgba(0, 240, 255, 0.3); }
+        .theme-80s .search-result { border-bottom-color: #1a1a3e; }
+
+        .theme-tesla .search-results { background: #111111; border: 1px solid #2a2a2a; border-radius: 0 0 4px 4px; border-top: none; }
+        .theme-tesla .search-result:hover { background: #1a1a1a; }
+        .theme-tesla .search-result .sr-ticker { color: #ffffff; }
+        .theme-tesla .search-result { border-bottom-color: #1a1a1a; }
+
+        /* Inline editable shares */
+        .shares-input {
+            width: 80px; text-align: right; padding: 4px 8px; font-size: 14px;
+            border: 1px solid transparent; background: transparent; color: inherit;
+            font-family: inherit; transition: all 0.2s;
+        }
+        .shares-input:hover { border-color: #444; }
+        .shares-input:focus { outline: none; }
+        .theme-default .shares-input:focus { border-color: #ff4b4b; background: #1a1a2e; }
+        .theme-80s .shares-input:focus { border-color: #00f0ff; background: #0a0a1a; box-shadow: 0 0 8px rgba(0, 240, 255, 0.2); }
+        .theme-tesla .shares-input:focus { border-color: #e31937; background: #0a0a0a; border-radius: 4px; }
+
+        /* Selected ticker preview in add form */
+        .selected-preview {
+            display: none; padding: 10px 14px; margin-top: 8px; font-size: 13px;
+            border-radius: 4px;
+        }
+        .selected-preview.show { display: flex; gap: 16px; align-items: center; }
+        .selected-preview .sp-ticker { font-weight: 700; }
+        .selected-preview .sp-name { opacity: 0.7; }
+        .selected-preview .sp-price { margin-left: auto; }
+        .selected-preview .sp-yield { opacity: 0.7; }
+        .theme-default .selected-preview { background: #1a1a2e; border: 1px solid #333; }
+        .theme-80s .selected-preview { background: #1a0a2e; border: 1px solid #b042ff44; }
+        .theme-tesla .selected-preview { background: #0a0a0a; border: 1px solid #1a1a1a; }
+
+        /* Alert banner */
+        .alerts { margin-bottom: 24px; }
+        .alert-item {
+            display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+            margin-bottom: 6px; border-radius: 4px; font-size: 13px; border-left: 3px solid;
+        }
+        .alert-icon { font-size: 16px; flex-shrink: 0; }
+        .alert-text { flex: 1; }
+        .alert-text strong { font-weight: 600; }
+        .alert-days { font-weight: 700; white-space: nowrap; }
+
+        .theme-default .alert-item { background: #262730; border-left-color: #ff4b4b; }
+        .theme-default .alert-days { color: #ff4b4b; }
+        .theme-default .alert-item.soon { background: #ff4b4b15; }
+        .theme-80s .alert-item { background: rgba(13,13,43,0.8); border-left-color: #ffe14d; }
+        .theme-80s .alert-days { color: #ffe14d; text-shadow: 0 0 5px rgba(255,225,77,0.3); }
+        .theme-80s .alert-item.soon { background: #ffe14d10; border-left-color: #ff2d95; }
+        .theme-80s .alert-item.soon .alert-days { color: #ff2d95; text-shadow: 0 0 5px rgba(255,45,149,0.3); }
+        .theme-tesla .alert-item { background: #0a0a0a; border-left-color: #e31937; }
+        .theme-tesla .alert-days { color: #e31937; }
+        .theme-tesla .alert-item.soon { background: #e3193710; }
+
+        /* Dividend growth arrow */
+        .growth { font-size: 12px; font-weight: 600; }
+        .growth.up { color: #21c354; }
+        .growth.down { color: #ff4b4b; }
+        .growth.flat { opacity: 0.4; }
+        .theme-80s .growth.up { color: #39ff14; text-shadow: 0 0 5px rgba(57,255,20,0.3); }
+        .theme-80s .growth.down { color: #ff2d95; text-shadow: 0 0 5px rgba(255,45,149,0.3); }
+        .theme-tesla .growth.up { color: #18b818; }
+        .theme-tesla .growth.down { color: #e31937; }
+
+        /* Tax summary section */
+        .tax-summary { margin-top: 20px; }
+        .tax-row {
+            display: flex; justify-content: space-between; padding: 10px 16px;
+            border-bottom: 1px solid transparent; font-size: 14px;
+        }
+        .tax-row:last-child { border-bottom: none; }
+        .tax-row .tax-label { opacity: 0.6; }
+        .tax-row .tax-value { font-weight: 600; }
+        .tax-row.tax-net .tax-label { opacity: 1; font-weight: 600; }
+        .tax-note { font-size: 11px; opacity: 0.4; margin-top: 8px; padding: 0 16px; }
+
+        .theme-default .tax-summary { background: #262730; border: 1px solid #333; border-radius: 8px; }
+        .theme-default .tax-row { border-bottom-color: #1e1e2a; }
+        .theme-default .tax-row.tax-net .tax-value { color: #21c354; }
+        .theme-80s .tax-summary { background: rgba(13,13,43,0.8); border: 1px solid #333366; }
+        .theme-80s .tax-row { border-bottom-color: #1a1a3e; }
+        .theme-80s .tax-row.tax-net .tax-value { color: #39ff14; text-shadow: 0 0 8px rgba(57,255,20,0.3); }
+        .theme-tesla .tax-summary { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 8px; }
+        .theme-tesla .tax-row { border-bottom-color: #111; }
+        .theme-tesla .tax-row.tax-net .tax-value { color: #18b818; }
+
+        /* Tax rate selector */
+        .tax-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 13px; }
+        .tax-selector label { opacity: 0.6; }
+        .tax-selector select { padding: 4px 8px; font-size: 13px; }
+        .theme-default .tax-selector select { background: #0e1117; color: #fafafa; border: 1px solid #555; border-radius: 4px; }
+        .theme-80s .tax-selector select { background: #0a0a1a; color: #00f0ff; border: 1px solid #00f0ff55; font-family: 'Share Tech Mono', monospace; }
+        .theme-tesla .tax-selector select { background: #111; color: #fff; border: 1px solid #2a2a2a; border-radius: 4px; font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="theme-tesla">
+
+<div class="scanline"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <div class="sidebar-title">Dividend Tracker</div>
+    <div class="sidebar-subtitle">RETRO EDITION</div>
+
+    <label>Display Currency</label>
+    <select class="theme-select" id="currency" onchange="switchCurrency()">
+        <option value="EUR" selected>EUR</option>
+        <option value="USD">USD</option>
+        <option value="HUF">HUF</option>
+    </select>
+
+    <div class="divider"></div>
+
+    <button class="nav-item active" onclick="showPage('portfolio', this)">Portfolio</button>
+    <button class="nav-item" onclick="showPage('calendar', this)">Dividend Calendar</button>
+    <button class="nav-item" onclick="showPage('summary', this)">Summary</button>
+
+    <div class="sys-status">
+        <div class="sys-status-label">SYS.ONLINE</div>
+        <div class="sys-status-bar">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</div>
+    </div>
+
+    <div class="sidebar-bottom">
+        <div class="divider"></div>
+        <label>Theme</label>
+        <select class="theme-select" id="themeSelect" onchange="switchTheme()">
+            <option value="tesla" selected>Tesla</option>
+            <option value="default">Default</option>
+            <option value="80s">80s Retro</option>
+        </select>
+    </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+    <!-- ==================== PORTFOLIO ==================== -->
+    <div id="portfolio" class="page active">
+        <h1>Portfolio</h1>
+        <div class="sun-deco"></div>
+
+        <!-- Alerts -->
+        <div class="alerts">
+            <div class="alert-item soon">
+                <span class="alert-icon">!</span>
+                <span class="alert-text"><strong>AAPL</strong> ex-dividend date approaching</span>
+                <span class="alert-days">in 3 days</span>
+            </div>
+            <div class="alert-item">
+                <span class="alert-icon">!</span>
+                <span class="alert-text"><strong>O</strong> ex-dividend date approaching</span>
+                <span class="alert-days">in 9 days</span>
+            </div>
+        </div>
+
+        <button class="toggle-btn" onclick="toggleForm()">+ Add new holding</button>
+
+        <div class="add-form" id="addForm">
+            <div class="row">
+                <div class="search-wrapper">
+                    <label>Search company or ETF</label>
+                    <input type="text" class="search-input" id="searchInput" placeholder="Type to search... e.g. Apple, Vanguard, TSLA" oninput="handleSearch(this.value)" onfocus="handleSearch(this.value)" autocomplete="off" />
+                    <div class="search-results" id="searchResults">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <div>
+                    <label>Shares</label>
+                    <input type="number" id="addShares" value="1.0" step="0.1" style="width:120px" />
+                </div>
+                <div>
+                    <button class="btn-primary" onclick="addHolding()">Add</button>
+                </div>
+            </div>
+            <div class="selected-preview" id="selectedPreview">
+                <span class="sp-ticker" id="spTicker"></span>
+                <span class="sp-name" id="spName"></span>
+                <span class="sp-price" id="spPrice"></span>
+                <span class="sp-yield" id="spYield"></span>
+            </div>
+        </div>
+
+        <p class="cur-note">All values shown in <span class="cur-display">EUR</span></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Ticker</th>
+                    <th>Company</th>
+                    <th class="right">Shares</th>
+                    <th class="right">Price (<span class="cur-display">EUR</span>)</th>
+                    <th class="right">Yield</th>
+                    <th class="right">Annual Div (<span class="cur-display">EUR</span>)</th>
+                    <th class="right">Div Growth</th>
+                    <th>Ex-Div Date</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="holdingsBody">
+                <tr data-ticker="AAPL" data-div-rate="0.96" data-price="189.42" data-yield="0.0056">
+                    <td><strong>AAPL</strong></td><td>Apple Inc.</td>
+                    <td class="right"><input class="shares-input" type="number" value="25" step="0.1" onchange="recalcRow(this)" /></td>
+                    <td class="right price-cell money" data-eur="189.42">189.42</td><td class="right yield-col">0.56%</td>
+                    <td class="right div-cell money" data-eur="24.00">24.00</td>
+                    <td class="right"><span class="growth up">+4.2% YoY</span></td>
+                    <td>2026-02-07</td>
+                    <td><button class="btn-del" onclick="deleteRow(this)">Del</button></td>
+                </tr>
+                <tr data-ticker="VWCE.DE" data-div-rate="1.76" data-price="108.76" data-yield="0.0162">
+                    <td><strong>VWCE.DE</strong></td><td>Vanguard FTSE All-World ETF</td>
+                    <td class="right"><input class="shares-input" type="number" value="40" step="0.1" onchange="recalcRow(this)" /></td>
+                    <td class="right price-cell money" data-eur="108.76">108.76</td><td class="right yield-col">1.62%</td>
+                    <td class="right div-cell money" data-eur="70.40">70.40</td>
+                    <td class="right"><span class="growth up">+6.8% YoY</span></td>
+                    <td>2026-06-18</td>
+                    <td><button class="btn-del" onclick="deleteRow(this)">Del</button></td>
+                </tr>
+                <tr data-ticker="O" data-div-rate="3.078" data-price="53.88" data-yield="0.0572">
+                    <td><strong>O</strong></td><td>Realty Income Corp.</td>
+                    <td class="right"><input class="shares-input" type="number" value="50" step="0.1" onchange="recalcRow(this)" /></td>
+                    <td class="right price-cell money" data-eur="53.88">53.88</td><td class="right yield-col">5.72%</td>
+                    <td class="right div-cell money" data-eur="153.90">153.90</td>
+                    <td class="right"><span class="growth up">+3.1% YoY</span></td>
+                    <td>2026-04-01</td>
+                    <td><button class="btn-del" onclick="deleteRow(this)">Del</button></td>
+                </tr>
+                <tr data-ticker="MSFT" data-div-rate="3.00" data-price="384.60" data-yield="0.0074">
+                    <td><strong>MSFT</strong></td><td>Microsoft Corporation</td>
+                    <td class="right"><input class="shares-input" type="number" value="10" step="0.1" onchange="recalcRow(this)" /></td>
+                    <td class="right price-cell money" data-eur="384.60">384.60</td><td class="right yield-col">0.74%</td>
+                    <td class="right div-cell money" data-eur="30.00">30.00</td>
+                    <td class="right"><span class="growth up">+10.3% YoY</span></td>
+                    <td>2026-05-15</td>
+                    <td><button class="btn-del" onclick="deleteRow(this)">Del</button></td>
+                </tr>
+                <tr data-ticker="NOVO-B.CO" data-div-rate="1.30" data-price="94.50" data-yield="0.0138">
+                    <td><strong>NOVO-B.CO</strong></td><td>Novo Nordisk A/S</td>
+                    <td class="right"><input class="shares-input" type="number" value="30" step="0.1" onchange="recalcRow(this)" /></td>
+                    <td class="right price-cell money" data-eur="94.50">94.50</td><td class="right yield-col">1.38%</td>
+                    <td class="right div-cell money" data-eur="39.00">39.00</td>
+                    <td class="right"><span class="growth up">+14.5% YoY</span></td>
+                    <td>2026-03-20</td>
+                    <td><button class="btn-del" onclick="deleteRow(this)">Del</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ==================== CALENDAR ==================== -->
+    <div id="calendar" class="page">
+        <h1>Dividend Calendar</h1>
+        <div class="sun-deco"></div>
+
+        <!-- Month navigation -->
+        <div class="cal-nav">
+            <button class="cal-nav-btn" onclick="changeMonth(-1)">&larr;</button>
+            <span class="cal-month-label" id="calMonthLabel">April 2026</span>
+            <button class="cal-nav-btn" onclick="changeMonth(1)">&rarr;</button>
+            <button class="cal-nav-btn cal-today-btn" onclick="goToToday()">Today</button>
+        </div>
+
+        <!-- Calendar grid -->
+        <div class="cal-grid" id="calGrid">
+            <!-- Built by JS -->
+        </div>
+
+        <!-- Monthly total -->
+        <div class="cal-month-total" id="calMonthTotal"></div>
+
+        <h2>Upcoming Payments</h2>
+        <p class="cur-note">Estimated payments in <span class="cur-display">EUR</span></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th><th>Ticker</th><th>Company</th>
+                    <th class="right">Per Share</th><th class="right">Payout (<span class="cur-display">EUR</span>)</th><th>Frequency</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>2026-04-15</td><td><strong>O</strong></td><td>Realty Income Corp.</td><td class="right">0.2635</td><td class="right payout-col money" data-eur="13.18">13.18</td><td><span class="badge monthly">monthly</span></td></tr>
+                <tr><td>2026-05-10</td><td><strong>AAPL</strong></td><td>Apple Inc.</td><td class="right">0.2500</td><td class="right payout-col money" data-eur="6.25">6.25</td><td><span class="badge quarterly">quarterly</span></td></tr>
+                <tr><td>2026-05-15</td><td><strong>O</strong></td><td>Realty Income Corp.</td><td class="right">0.2635</td><td class="right payout-col money" data-eur="13.18">13.18</td><td><span class="badge monthly">monthly</span></td></tr>
+                <tr><td>2026-06-12</td><td><strong>MSFT</strong></td><td>Microsoft Corporation</td><td class="right">0.7500</td><td class="right payout-col money" data-eur="7.50">7.50</td><td><span class="badge quarterly">quarterly</span></td></tr>
+                <tr><td>2026-06-15</td><td><strong>O</strong></td><td>Realty Income Corp.</td><td class="right">0.2635</td><td class="right payout-col money" data-eur="13.18">13.18</td><td><span class="badge monthly">monthly</span></td></tr>
+                <tr><td>2026-06-20</td><td><strong>VWCE.DE</strong></td><td>Vanguard FTSE All-World ETF</td><td class="right">1.7600</td><td class="right payout-col money" data-eur="70.40">70.40</td><td><span class="badge annual">annual</span></td></tr>
+                <tr><td>2026-07-15</td><td><strong>O</strong></td><td>Realty Income Corp.</td><td class="right">0.2635</td><td class="right payout-col money" data-eur="13.18">13.18</td><td><span class="badge monthly">monthly</span></td></tr>
+                <tr><td>2026-08-10</td><td><strong>AAPL</strong></td><td>Apple Inc.</td><td class="right">0.2500</td><td class="right payout-col money" data-eur="6.25">6.25</td><td><span class="badge quarterly">quarterly</span></td></tr>
+            </tbody>
+        </table>
+
+        <h2>Monthly Breakdown — Expected Payouts (<span class="cur-display">EUR</span>)</h2>
+        <div class="bar-chart" style="height:220px;">
+            <div class="bar-col"><div class="bar-value money-round" data-eur="0"></div><div class="bar" style="height:0px"></div><div class="bar-label">Jan</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="0"></div><div class="bar" style="height:0px"></div><div class="bar-label">Feb</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="0"></div><div class="bar" style="height:0px"></div><div class="bar-label">Mar</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="13">13</div><div class="bar" style="height:20px"></div><div class="bar-label">Apr</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="58">58</div><div class="bar" style="height:88px"></div><div class="bar-label">May</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="91">91</div><div class="bar" style="height:140px"></div><div class="bar-label">Jun</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="13">13</div><div class="bar" style="height:20px"></div><div class="bar-label">Jul</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="19">19</div><div class="bar" style="height:29px"></div><div class="bar-label">Aug</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="21">21</div><div class="bar" style="height:32px"></div><div class="bar-label">Sep</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="0"></div><div class="bar" style="height:0px"></div><div class="bar-label">Oct</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="6">6</div><div class="bar" style="height:9px"></div><div class="bar-label">Nov</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="0"></div><div class="bar" style="height:0px"></div><div class="bar-label">Dec</div></div>
+        </div>
+    </div>
+
+    <!-- ==================== SUMMARY ==================== -->
+    <div id="summary" class="page">
+        <h1>Portfolio Summary</h1>
+        <div class="sun-deco"></div>
+
+        <p class="cur-note">All values in <span class="cur-display">EUR</span></p>
+
+        <div class="metrics">
+            <div class="metric">
+                <div class="label">Portfolio Value (<span class="cur-display">EUR</span>)</div>
+                <div class="value money-fmt" data-eur="14143.20">14,143.20</div>
+            </div>
+            <div class="metric">
+                <div class="label">Annual Dividends (<span class="cur-display">EUR</span>)</div>
+                <div class="value green money-fmt" data-eur="305.68">305.68</div>
+            </div>
+            <div class="metric">
+                <div class="label">Monthly Average (<span class="cur-display">EUR</span>)</div>
+                <div class="value money-fmt" data-eur="25.47">25.47</div>
+            </div>
+            <div class="metric">
+                <div class="label">Portfolio Yield</div>
+                <div class="value accent">2.16%</div>
+            </div>
+        </div>
+
+        <h2>Breakdown by Holding</h2>
+        <table>
+            <thead>
+                <tr><th>Ticker</th><th class="right">Value (<span class="cur-display">EUR</span>)</th><th class="right">Annual Div (<span class="cur-display">EUR</span>)</th><th class="right">% of Income</th><th style="width:120px"></th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>O</strong></td><td class="right money" data-eur="2694.00">2,694.00</td><td class="right money" data-eur="145.20">145.20</td><td class="right pct-col">47.5%</td><td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:47.5%"></div></div></td></tr>
+                <tr><td><strong>VWCE.DE</strong></td><td class="right money" data-eur="4350.40">4,350.40</td><td class="right money" data-eur="70.46">70.46</td><td class="right pct-col">23.1%</td><td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:23.1%"></div></div></td></tr>
+                <tr><td><strong>NOVO-B.CO</strong></td><td class="right money" data-eur="2835.00">2,835.00</td><td class="right money" data-eur="39.12">39.12</td><td class="right pct-col">12.8%</td><td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:12.8%"></div></div></td></tr>
+                <tr><td><strong>MSFT</strong></td><td class="right money" data-eur="3846.00">3,846.00</td><td class="right money" data-eur="28.40">28.40</td><td class="right pct-col">9.3%</td><td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:9.3%"></div></div></td></tr>
+                <tr><td><strong>AAPL</strong></td><td class="right money" data-eur="4735.50">4,735.50</td><td class="right money" data-eur="22.50">22.50</td><td class="right pct-col">7.4%</td><td><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:7.4%"></div></div></td></tr>
+            </tbody>
+        </table>
+
+        <h2>Annual Dividend Income per Holding (<span class="cur-display">EUR</span>)</h2>
+        <div class="bar-chart" id="summaryBarChart">
+            <div class="bar-col"><div class="bar-value money-round" data-eur="145">145</div><div class="bar" style="height:155px"></div><div class="bar-label">O</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="70">70</div><div class="bar" style="height:75px"></div><div class="bar-label">VWCE</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="39">39</div><div class="bar" style="height:42px"></div><div class="bar-label">NOVO</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="28">28</div><div class="bar" style="height:30px"></div><div class="bar-label">MSFT</div></div>
+            <div class="bar-col"><div class="bar-value money-round" data-eur="23">23</div><div class="bar" style="height:24px"></div><div class="bar-label">AAPL</div></div>
+        </div>
+
+        <h2>Tax Withholding Estimate</h2>
+        <div class="tax-selector">
+            <label>Withholding tax rate:</label>
+            <select onchange="updateTax(this.value)">
+                <option value="15" selected>15% (US-Finland treaty)</option>
+                <option value="30">30% (US default, no treaty)</option>
+                <option value="0">0% (domestic / tax-free)</option>
+                <option value="25">25% (Germany)</option>
+                <option value="27">27% (Denmark)</option>
+                <option value="35">35% (Switzerland)</option>
+            </select>
+        </div>
+        <div class="tax-summary" id="taxSummary">
+            <div class="tax-row">
+                <span class="tax-label">Gross annual dividends</span>
+                <span class="tax-value" id="taxGross" data-eur="305.68">305.68 EUR</span>
+            </div>
+            <div class="tax-row">
+                <span class="tax-label">Estimated withholding (<span id="taxPctLabel">15%</span>)</span>
+                <span class="tax-value" id="taxWithheld" data-eur="45.85" style="opacity:0.6;">-45.85 EUR</span>
+            </div>
+            <div class="tax-row tax-net">
+                <span class="tax-label">Net after withholding</span>
+                <span class="tax-value" id="taxNet" data-eur="259.83">259.83 EUR</span>
+            </div>
+        </div>
+        <p class="tax-note">Estimate only. Actual tax depends on your residency, treaty status, and account type. ETFs may have different withholding rules.</p>
+    </div>
+
+</div>
+
+<script>
+    // --- Mock Yahoo Finance search database ---
+    const mockStocks = [
+        { ticker: "AAPL", name: "Apple Inc.", type: "Stock", exchange: "NASDAQ", price: 189.42, divRate: 0.96, divYield: 0.0056 },
+        { ticker: "MSFT", name: "Microsoft Corporation", type: "Stock", exchange: "NASDAQ", price: 384.60, divRate: 3.00, divYield: 0.0074 },
+        { ticker: "GOOGL", name: "Alphabet Inc.", type: "Stock", exchange: "NASDAQ", price: 174.20, divRate: 0.80, divYield: 0.0046 },
+        { ticker: "AMZN", name: "Amazon.com Inc.", type: "Stock", exchange: "NASDAQ", price: 186.50, divRate: 0, divYield: 0 },
+        { ticker: "TSLA", name: "Tesla Inc.", type: "Stock", exchange: "NASDAQ", price: 248.90, divRate: 0, divYield: 0 },
+        { ticker: "NVDA", name: "NVIDIA Corporation", type: "Stock", exchange: "NASDAQ", price: 875.30, divRate: 0.16, divYield: 0.0002 },
+        { ticker: "JPM", name: "JPMorgan Chase & Co.", type: "Stock", exchange: "NYSE", price: 198.40, divRate: 4.60, divYield: 0.0232 },
+        { ticker: "JNJ", name: "Johnson & Johnson", type: "Stock", exchange: "NYSE", price: 156.80, divRate: 4.76, divYield: 0.0304 },
+        { ticker: "O", name: "Realty Income Corp.", type: "REIT", exchange: "NYSE", price: 53.88, divRate: 3.078, divYield: 0.0572 },
+        { ticker: "KO", name: "Coca-Cola Company", type: "Stock", exchange: "NYSE", price: 62.40, divRate: 1.94, divYield: 0.0311 },
+        { ticker: "PEP", name: "PepsiCo Inc.", type: "Stock", exchange: "NASDAQ", price: 168.90, divRate: 5.06, divYield: 0.03 },
+        { ticker: "T", name: "AT&T Inc.", type: "Stock", exchange: "NYSE", price: 17.20, divRate: 1.11, divYield: 0.0645 },
+        { ticker: "VZ", name: "Verizon Communications", type: "Stock", exchange: "NYSE", price: 40.80, divRate: 2.66, divYield: 0.0652 },
+        { ticker: "NOVO-B.CO", name: "Novo Nordisk A/S", type: "Stock", exchange: "Copenhagen", price: 94.50, divRate: 1.30, divYield: 0.0138 },
+        { ticker: "ASML", name: "ASML Holding NV", type: "Stock", exchange: "NASDAQ", price: 920.00, divRate: 6.24, divYield: 0.0068 },
+        { ticker: "SAP", name: "SAP SE", type: "Stock", exchange: "NYSE", price: 195.60, divRate: 2.37, divYield: 0.0121 },
+        { ticker: "NESN.SW", name: "Nestle SA", type: "Stock", exchange: "SIX", price: 88.40, divRate: 3.00, divYield: 0.0339 },
+        { ticker: "NOVN.SW", name: "Novartis AG", type: "Stock", exchange: "SIX", price: 98.20, divRate: 3.50, divYield: 0.0356 },
+        { ticker: "VWCE.DE", name: "Vanguard FTSE All-World ETF", type: "ETF", exchange: "Xetra", price: 108.76, divRate: 1.76, divYield: 0.0162 },
+        { ticker: "EUNL.DE", name: "iShares Core MSCI World ETF", type: "ETF", exchange: "Xetra", price: 82.40, divRate: 0.58, divYield: 0.007 },
+        { ticker: "VUSA.L", name: "Vanguard S&P 500 ETF", type: "ETF", exchange: "LSE", price: 74.20, divRate: 1.12, divYield: 0.0151 },
+        { ticker: "ISPA.L", name: "iShares Core S&P 500 ETF", type: "ETF", exchange: "LSE", price: 48.60, divRate: 0.42, divYield: 0.0086 },
+        { ticker: "SCHD", name: "Schwab US Dividend Equity ETF", type: "ETF", exchange: "NYSE", price: 78.90, divRate: 2.68, divYield: 0.034 },
+        { ticker: "VYM", name: "Vanguard High Dividend Yield ETF", type: "ETF", exchange: "NYSE", price: 118.40, divRate: 3.52, divYield: 0.0297 },
+        { ticker: "JEPI", name: "JPMorgan Equity Premium Income ETF", type: "ETF", exchange: "NYSE", price: 56.80, divRate: 4.20, divYield: 0.074 },
+        { ticker: "OTP.BD", name: "OTP Bank Nyrt.", type: "Stock", exchange: "Budapest", price: 18240, divRate: 800, divYield: 0.0439 },
+        { ticker: "MOL.BD", name: "MOL Hungarian Oil & Gas", type: "Stock", exchange: "Budapest", price: 2840, divRate: 150, divYield: 0.0528 },
+        { ticker: "RICHTER.BD", name: "Richter Gedeon Nyrt.", type: "Stock", exchange: "Budapest", price: 9600, divRate: 220, divYield: 0.0229 },
+    ];
+
+    let selectedStock = null;
+
+    // --- Navigation ---
+    function showPage(pageId, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function toggleForm() {
+        document.getElementById('addForm').classList.toggle('open');
+        // Focus search input when opening
+        setTimeout(() => document.getElementById('searchInput').focus(), 100);
+    }
+
+    // Mock exchange rates (from EUR)
+    const FX_RATES = { EUR: 1, USD: 1.09, HUF: 413 };
+
+    function getRate() {
+        const cur = document.getElementById('currency').value;
+        return FX_RATES[cur] || 1;
+    }
+
+    function fmtMoney(val, cur) {
+        // HUF has no decimals, others have 2
+        if (cur === 'HUF') return Math.round(val).toLocaleString('en');
+        return val.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function switchCurrency() {
+        const cur = document.getElementById('currency').value;
+        const rate = FX_RATES[cur];
+
+        // Update all labels
+        document.querySelectorAll('.cur-display').forEach(el => el.textContent = cur);
+
+        // Convert .money elements (table cells: show as number only)
+        document.querySelectorAll('.money').forEach(el => {
+            const base = parseFloat(el.getAttribute('data-eur'));
+            if (!isNaN(base)) el.textContent = fmtMoney(base * rate, cur);
+        });
+
+        // Convert .money-fmt elements (metric cards: show as number only)
+        document.querySelectorAll('.money-fmt').forEach(el => {
+            const base = parseFloat(el.getAttribute('data-eur'));
+            if (!isNaN(base)) el.textContent = fmtMoney(base * rate, cur);
+        });
+
+        // Convert .money-round elements (bar chart values: rounded integers, hide zeros)
+        document.querySelectorAll('.money-round').forEach(el => {
+            const base = parseFloat(el.getAttribute('data-eur'));
+            if (!isNaN(base)) {
+                const val = Math.round(base * rate);
+                el.textContent = val > 0 ? val.toLocaleString('en') : '';
+            }
+        });
+
+        // Re-render calendar with new currency
+        renderCalendar();
+
+        // Re-run tax calculation
+        const taxSelect = document.querySelector('.tax-selector select');
+        if (taxSelect) updateTax(taxSelect.value);
+    }
+
+    function switchTheme() {
+        const theme = document.getElementById('themeSelect').value;
+        document.body.className = 'theme-' + theme;
+    }
+
+    // --- Search ---
+    function handleSearch(query) {
+        const results = document.getElementById('searchResults');
+        if (!query || query.length < 1) {
+            results.classList.remove('open');
+            return;
+        }
+
+        const q = query.toLowerCase();
+        const matches = mockStocks.filter(s =>
+            s.ticker.toLowerCase().includes(q) ||
+            s.name.toLowerCase().includes(q)
+        ).slice(0, 8);
+
+        if (matches.length === 0) {
+            results.innerHTML = '<div class="search-result" style="opacity:0.5; cursor:default;">No results found</div>';
+            results.classList.add('open');
+            return;
+        }
+
+        results.innerHTML = matches.map(s => `
+            <div class="search-result" onclick="selectStock('${s.ticker}')">
+                <span class="sr-ticker">${s.ticker}</span>
+                <span class="sr-name">${s.name}</span>
+                <span class="sr-type">${s.type}</span>
+                <span class="sr-exchange">${s.exchange}</span>
+            </div>
+        `).join('');
+        results.classList.add('open');
+    }
+
+    function selectStock(ticker) {
+        const stock = mockStocks.find(s => s.ticker === ticker);
+        if (!stock) return;
+
+        selectedStock = stock;
+
+        // Update search input
+        document.getElementById('searchInput').value = `${stock.ticker} — ${stock.name}`;
+        document.getElementById('searchResults').classList.remove('open');
+
+        // Show preview
+        const preview = document.getElementById('selectedPreview');
+        document.getElementById('spTicker').textContent = stock.ticker;
+        document.getElementById('spName').textContent = stock.name;
+        document.getElementById('spPrice').textContent = `Price: ${stock.price.toLocaleString()}`;
+        document.getElementById('spYield').textContent = stock.divYield > 0
+            ? `Yield: ${(stock.divYield * 100).toFixed(2)}%`
+            : 'No dividend';
+        preview.classList.add('show');
+    }
+
+    // Close search dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-wrapper')) {
+            document.getElementById('searchResults').classList.remove('open');
+        }
+    });
+
+    // --- Add holding ---
+    function addHolding() {
+        if (!selectedStock) {
+            alert('Search and select a stock first.');
+            return;
+        }
+        const shares = parseFloat(document.getElementById('addShares').value) || 1;
+        const s = selectedStock;
+        const annualDiv = (s.divRate * shares).toFixed(2);
+
+        const tbody = document.getElementById('holdingsBody');
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-ticker', s.ticker);
+        tr.setAttribute('data-div-rate', s.divRate);
+        tr.setAttribute('data-price', s.price);
+        tr.setAttribute('data-yield', s.divYield);
+        tr.innerHTML = `
+            <td><strong>${s.ticker}</strong></td>
+            <td>${s.name}</td>
+            <td class="right"><input class="shares-input" type="number" value="${shares}" step="0.1" onchange="recalcRow(this)" /></td>
+            <td class="right price-cell">${s.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td class="right yield-col">${s.divYield > 0 ? (s.divYield * 100).toFixed(2) + '%' : 'N/A'}</td>
+            <td class="right div-cell">${annualDiv}</td>
+            <td>—</td>
+            <td><button class="btn-del" onclick="deleteRow(this)">Del</button></td>
+        `;
+
+        // Brief highlight animation
+        tr.style.background = 'rgba(57, 255, 20, 0.1)';
+        tbody.appendChild(tr);
+        setTimeout(() => tr.style.background = '', 1500);
+
+        // Reset form
+        selectedStock = null;
+        document.getElementById('searchInput').value = '';
+        document.getElementById('selectedPreview').classList.remove('show');
+        document.getElementById('addShares').value = '1.0';
+    }
+
+    // --- Recalculate row when shares change ---
+    function recalcRow(input) {
+        const tr = input.closest('tr');
+        const shares = parseFloat(input.value) || 0;
+        const divRate = parseFloat(tr.getAttribute('data-div-rate')) || 0;
+        const divCell = tr.querySelector('.div-cell');
+        const newDiv = (divRate * shares).toFixed(2);
+
+        // Animate the change
+        divCell.style.transition = 'color 0.3s';
+        divCell.style.color = '#39ff14';
+        divCell.textContent = newDiv;
+        setTimeout(() => divCell.style.color = '', 800);
+    }
+
+    // --- Delete row ---
+    function deleteRow(btn) {
+        const tr = btn.closest('tr');
+        tr.style.opacity = '0';
+        tr.style.transition = 'opacity 0.3s';
+        setTimeout(() => tr.remove(), 300);
+    }
+
+    // ============================================================
+    // CALENDAR
+    // ============================================================
+
+    // Mock dividend events (in the real app, these come from yfinance)
+    const dividendEvents = [
+        { date: '2026-04-15', ticker: 'O', company: 'Realty Income', amount: 13.18, perShare: 0.2635, freq: 'monthly' },
+        { date: '2026-05-10', ticker: 'AAPL', company: 'Apple Inc.', amount: 6.25, perShare: 0.25, freq: 'quarterly' },
+        { date: '2026-05-15', ticker: 'O', company: 'Realty Income', amount: 13.18, perShare: 0.2635, freq: 'monthly' },
+        { date: '2026-05-22', ticker: 'NOVO-B.CO', company: 'Novo Nordisk', amount: 39.00, perShare: 1.30, freq: 'annual' },
+        { date: '2026-06-12', ticker: 'MSFT', company: 'Microsoft', amount: 7.50, perShare: 0.75, freq: 'quarterly' },
+        { date: '2026-06-15', ticker: 'O', company: 'Realty Income', amount: 13.18, perShare: 0.2635, freq: 'monthly' },
+        { date: '2026-06-20', ticker: 'VWCE.DE', company: 'Vanguard FTSE AW', amount: 70.40, perShare: 1.76, freq: 'annual' },
+        { date: '2026-07-15', ticker: 'O', company: 'Realty Income', amount: 13.18, perShare: 0.2635, freq: 'monthly' },
+        { date: '2026-08-10', ticker: 'AAPL', company: 'Apple Inc.', amount: 6.25, perShare: 0.25, freq: 'quarterly' },
+        { date: '2026-08-15', ticker: 'O', company: 'Realty Income', amount: 13.18, perShare: 0.2635, freq: 'monthly' },
+        { date: '2026-09-11', ticker: 'MSFT', company: 'Microsoft', amount: 7.50, perShare: 0.75, freq: 'quarterly' },
+        { date: '2026-09-15', ticker: 'O', company: 'Realty Income', amount: 13.18, perShare: 0.2635, freq: 'monthly' },
+    ];
+
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+    let calYear = 2026;
+    let calMonth = 3; // April (0-indexed)
+
+    function changeMonth(delta) {
+        calMonth += delta;
+        if (calMonth > 11) { calMonth = 0; calYear++; }
+        if (calMonth < 0) { calMonth = 11; calYear--; }
+        renderCalendar();
+    }
+
+    function goToToday() {
+        // In the mockup, "today" is April 10, 2026
+        calYear = 2026;
+        calMonth = 3;
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calGrid');
+        const label = document.getElementById('calMonthLabel');
+        const totalEl = document.getElementById('calMonthTotal');
+        const cur = document.getElementById('currency').value;
+        const rate = FX_RATES[cur];
+
+        label.textContent = `${MONTHS[calMonth]} ${calYear}`;
+
+        // Get events for this month
+        const monthStr = String(calMonth + 1).padStart(2, '0');
+        const monthEvents = dividendEvents.filter(e => e.date.startsWith(`${calYear}-${monthStr}`));
+
+        // Group events by day
+        const eventsByDay = {};
+        monthEvents.forEach(e => {
+            const day = parseInt(e.date.split('-')[2]);
+            if (!eventsByDay[day]) eventsByDay[day] = [];
+            eventsByDay[day].push(e);
+        });
+
+        // Calculate month total (converted)
+        const monthTotal = monthEvents.reduce((sum, e) => sum + e.amount, 0) * rate;
+
+        // First day of month (0=Sun, convert to Mon-start: 0=Mon)
+        const firstDay = new Date(calYear, calMonth, 1).getDay();
+        const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Convert to Mon=0
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+        // Today check (mockup: April 10, 2026)
+        const todayDay = (calYear === 2026 && calMonth === 3) ? 10 : -1;
+
+        let html = '';
+
+        // Day headers
+        DAYS.forEach(d => {
+            html += `<div class="cal-header">${d}</div>`;
+        });
+
+        // Empty cells before first day
+        for (let i = 0; i < startOffset; i++) {
+            html += '<div class="cal-day empty"></div>';
+        }
+
+        // Day cells
+        for (let day = 1; day <= daysInMonth; day++) {
+            const events = eventsByDay[day] || [];
+            const hasDiv = events.length > 0;
+            const isToday = day === todayDay;
+            let classes = 'cal-day';
+            if (hasDiv) classes += ' has-dividend';
+            if (isToday) classes += ' today';
+
+            html += `<div class="${classes}">`;
+            html += `<div class="cal-day-number">${day}</div>`;
+
+            events.forEach(e => {
+                const converted = e.amount * rate;
+                html += `<div class="cal-div-chip">`;
+                html += `<span class="chip-ticker">${e.ticker}</span>`;
+                html += `<span class="chip-amount">${Math.round(converted)}</span>`;
+                html += `</div>`;
+            });
+
+            html += '</div>';
+        }
+
+        grid.innerHTML = html;
+
+        // Month total
+        if (monthTotal > 0) {
+            totalEl.innerHTML = `<span class="total-label">Total dividends in ${MONTHS[calMonth]}</span><span class="total-value">${fmtMoney(monthTotal, cur)} ${cur}</span>`;
+            totalEl.style.display = 'flex';
+        } else {
+            totalEl.innerHTML = `<span class="total-label">No dividends expected in ${MONTHS[calMonth]}</span><span class="total-value">${fmtMoney(0, cur)} ${cur}</span>`;
+            totalEl.style.display = 'flex';
+        }
+    }
+
+    // Render on load
+    renderCalendar();
+
+    // ============================================================
+    // TAX WITHHOLDING
+    // ============================================================
+    function updateTax(taxRate) {
+        const pct = parseFloat(taxRate) / 100;
+        const grossEur = 305.68;
+        const cur = document.getElementById('currency').value;
+        const fxRate = FX_RATES[cur];
+
+        const gross = grossEur * fxRate;
+        const withheld = gross * pct;
+        const net = gross - withheld;
+
+        document.getElementById('taxGross').textContent = `${fmtMoney(gross, cur)} ${cur}`;
+        document.getElementById('taxGross').setAttribute('data-eur', grossEur);
+        document.getElementById('taxWithheld').textContent = `-${fmtMoney(withheld, cur)} ${cur}`;
+        document.getElementById('taxWithheld').setAttribute('data-eur', (grossEur * pct));
+        document.getElementById('taxNet').textContent = `${fmtMoney(net, cur)} ${cur}`;
+        document.getElementById('taxNet').setAttribute('data-eur', (grossEur - grossEur * pct));
+        document.getElementById('taxPctLabel').textContent = `${taxRate}%`;
+    }
+</script>
+
+</body>
+</html>
