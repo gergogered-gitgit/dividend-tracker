@@ -23,10 +23,15 @@ def get_stock_info(ticker: str) -> dict:
         info = stock.info
         return {
             "name": info.get("longName") or info.get("shortName") or ticker,
-            "price": info.get("currentPrice") or info.get("regularMarketPrice"),
-            "currency": info.get("currency", "USD"),
-            "dividend_rate": info.get("dividendRate"),  # annual dividend per share
-            "dividend_yield": info.get("dividendYield"),  # as decimal (0.03 = 3%)
+            "price": (
+              info.get("currentPrice")
+              or info.get("regularMarketPrice")
+              or info.get("regularMarketPreviousClose")
+              or info.get("previousClose")
+          ),
+            "currency": info.get("currency") or info.get("financialCurrency") or "USD",
+            "dividend_rate": info.get("dividendRate") or info.get("trailingAnnualDividendRate"),
+            "dividend_yield": info.get("dividendYield") or info.get("trailingAnnualDividendYield"),
             "ex_dividend_date": _timestamp_to_date(info.get("exDividendDate")),
         }
     except Exception:
