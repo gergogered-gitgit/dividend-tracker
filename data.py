@@ -21,14 +21,25 @@ def get_stock_info(ticker: str) -> dict:
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
+
+        # Try multiple field names — yfinance changes these across versions
+        price = (
+            info.get("currentPrice")
+            or info.get("regularMarketPrice")
+            or info.get("regularMarketPreviousClose")
+            or info.get("previousClose")
+        )
+
+        # Fallback: use fast_info if .info didn't have the price
+        if not price:
+            try:
+                price = stock.fast_info.get("lastPrice") or stock.fast_info.get("regularMarketPrice")
+            except Exception:
+                pass
+
         return {
             "name": info.get("longName") or info.get("shortName") or ticker,
-            "price": (
-              info.get("currentPrice")
-              or info.get("regularMarketPrice")
-              or info.get("regularMarketPreviousClose")
-              or info.get("previousClose")
-          ),
+            "price": price,
             "currency": info.get("currency") or info.get("financialCurrency") or "USD",
             "dividend_rate": info.get("dividendRate") or info.get("trailingAnnualDividendRate"),
             "dividend_yield": _normalize_yield(info),
@@ -82,9 +93,11 @@ def get_dividend_history(ticker: str, years: int = 3) -> pd.DataFrame:
         if dividends.empty:
             return pd.DataFrame(columns=["date", "amount"])
 
-        # Filter to requested time window
-        cutoff = datetime.now() - timedelta(days=years * 365)
-        dividends = dividends[dividends.index >= cutoff.strftime("%Y-%m-%d")]
+        # Strip timezone info to avoid comparison issues
+        dividends.index = dividends.index.tz_localize(None)
+
+        cutoff = pd.Timestamp(datetime.now() - timedelta(days=years * 365))
+        dividends = dividends[dividends.index >= cutoff]
 
         df = dividends.reset_index()
         df.columns = ["date", "amount"]
@@ -107,15 +120,20 @@ def estimate_upcoming_dividends(ticker: str, shares: float) -> list[dict]:
         if dividends.empty:
             return []
 
+        # Strip timezone info to avoid comparison issues
+        dividends.index = dividends.index.tz_localize(None)
+        now = pd.Timestamp.now()
+
         # Get last 2 years of dividends to find the pattern
-        cutoff = datetime.now() - timedelta(days=730)
-        recent = dividends[dividends.index >= cutoff.strftime("%Y-%m-%d")]
+        cutoff = now - pd.Timedelta(days=730)
+        recent = dividends[dividends.index >= cutoff]
 
         if recent.empty:
             return []
 
         # Determine payment frequency
-        last_year = recent[recent.index >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
+        one_year_ago = now - pd.Timedelta(days=365)
+        last_year = recent[recent.index >= one_year_ago]
         payments_per_year = len(last_year)
 
         if payments_per_year == 0:
@@ -143,9 +161,9 @@ def estimate_upcoming_dividends(ticker: str, shares: float) -> list[dict]:
         next_date = recent.index.max()
         for _ in range(max(payments_per_year, 4) + 2):
             next_date = next_date + pd.Timedelta(days=int(avg_interval))
-            if next_date < pd.Timestamp.now():
+            if next_date < now:
                 continue
-            if next_date > pd.Timestamp.now() + pd.Timedelta(days=365):
+            if next_date > now + pd.Timedelta(days=365):
                 break
             upcoming.append({
                 "expected_date": next_date.date(),
@@ -185,6 +203,9 @@ def get_dividend_growth(ticker: str) -> dict:
         dividends = stock.dividends
         if dividends.empty:
             return {"growth_pct": None, "direction": "n/a"}
+
+        # Strip timezone info to avoid comparison issues
+        dividends.index = dividends.index.tz_localize(None)
 
         now = pd.Timestamp.now()
         one_year_ago = now - pd.Timedelta(days=365)
@@ -292,17 +313,20 @@ def fmt_money(value: float, currency: str) -> str:
 # --- Helper functions ---
 
 def _normalize_yield(info: dict) -> float:
-      """
-      Get dividend yield as a decimal where 0.02 = 2%.
-      yfinance sometimes returns values >1 — normalize those.
-      """
-      y = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
-      if y is None:
-          return None
-      if y > 1:
-          y = y / 100
-      return y
-    
+    """
+    Get dividend yield as a decimal where 0.02 = 2%.
+    yfinance sometimes returns values >1 (e.g. 2.0 meaning 2%) — normalize those.
+    """
+    y = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
+    if y is None:
+        return None
+    # If yield is greater than 1, it's likely in percentage form (e.g. 2.0 = 2%)
+    # Convert to decimal (0.02)
+    if y > 1:
+        y = y / 100
+    return y
+
+
 def _timestamp_to_date(ts):
     """Convert a unix timestamp to a date, or return None."""
     if ts is None:
