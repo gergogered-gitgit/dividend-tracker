@@ -28,7 +28,7 @@ page = st.sidebar.radio("Navigate", ["Portfolio", "Dividend Calendar", "Summary"
 
 # Theme at the bottom of sidebar
 st.sidebar.divider()
-theme = st.sidebar.selectbox("Theme", ["Tesla", "Default", "80s Retro"], index=0)
+theme = st.sidebar.selectbox("Theme", ["Modern", "Default", "Retro"], index=0)
 
 # Inject theme CSS
 st.markdown(get_theme_css(theme), unsafe_allow_html=True)

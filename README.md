@@ -10,7 +10,7 @@ Track your dividend portfolio in one place. See upcoming payments on a visual ca
 - **Dividend growth tracking** - year-over-year dividend growth per holding
 - **Tax withholding estimates** - configurable rates for different countries/treaties
 - **Multi-currency** - live conversion between EUR, USD, and HUF
-- **3 themes** - Tesla (minimalist), Default, and 80s Retro
+- **3 themes** - Modern, Default, and Retro
 
 ## Setup
 

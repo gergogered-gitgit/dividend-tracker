@@ -7,10 +7,10 @@ Injected via st.markdown(unsafe_allow_html=True).
 def get_theme_css(theme: str) -> str:
     """Return the full CSS block for the selected theme."""
     base = _base_css()
-    if theme == "80s Retro":
+    if theme == "Retro":
         return base + _retro_css()
-    elif theme == "Tesla":
-        return base + _tesla_css()
+    elif theme == "Modern":
+        return base + _modern_css()
     return base + _default_css()
 
 
@@ -113,7 +113,7 @@ def _default_css() -> str:
     """
 
 
-def _tesla_css() -> str:
+def _modern_css() -> str:
     return """
     <style>
     /* Override Streamlit's background */
