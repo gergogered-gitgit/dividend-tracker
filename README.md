@@ -4,13 +4,13 @@ Track your dividend portfolio in one place. See upcoming payments on a visual ca
 
 ## Features
 
-- **Portfolio management** — search and add stocks/ETFs from Yahoo Finance, edit shares inline
-- **Dividend calendar** — visual monthly calendar showing when dividends are paid
-- **Ex-dividend alerts** — warns you when ex-dividend dates are approaching
-- **Dividend growth tracking** — year-over-year dividend growth per holding
-- **Tax withholding estimates** — configurable rates for different countries/treaties
-- **Multi-currency** — live conversion between EUR, USD, and HUF
-- **3 themes** — Tesla (minimalist), Default, and 80s Retro
+- **Portfolio management** - search and add stocks/ETFs from Yahoo Finance, edit shares inline
+- **Dividend calendar** - visual monthly calendar showing when dividends are paid
+- **Ex-dividend alerts** - warns you when ex-dividend dates are approaching
+- **Dividend growth tracking** - year-over-year dividend growth per holding
+- **Tax withholding estimates** - configurable rates for different countries/treaties
+- **Multi-currency** - live conversion between EUR, USD, and HUF
+- **3 themes** - Tesla (minimalist), Default, and 80s Retro
 
 ## Setup
 
@@ -39,17 +39,15 @@ streamlit run app.py
 - Push this repo to GitHub
 - Go to [share.streamlit.io](https://share.streamlit.io) and connect the repo
 - Add your Supabase credentials in **Settings > Secrets**:
-  ```
-  SUPABASE_URL = "https://your-project-id.supabase.co"
-  SUPABASE_KEY = "your-publishable-key"
-  ```
 
-## Tech stack
+```toml
+SUPABASE_URL = "https://your-project-id.supabase.co"
+SUPABASE_KEY = "your-publishable-key"
+```
 
-- **Streamlit** — web interface
-- **yfinance** — live stock/dividend data from Yahoo Finance
-- **Supabase** — portfolio storage (free tier)
-- **Python** — pandas for data wrangling
-=======
-# dividend-tracker
-Track your dividend portfolio in one place. See upcoming payments on a visual calendar, monitor dividend growth, estimate tax withholding, and switch between currencies. Powered by live Yahoo Finance data.
+## Tech Stack
+
+- **Streamlit** - web interface
+- **yfinance** - live stock/dividend data from Yahoo Finance
+- **Supabase** - portfolio storage (free tier)
+- **Python** - pandas for data wrangling

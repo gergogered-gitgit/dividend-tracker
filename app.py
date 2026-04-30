@@ -214,7 +214,7 @@ elif page == "Dividend Calendar":
         month_name = cal_module.month_name[st.session_state.cal_month]
         st.markdown(f"### {month_name} {st.session_state.cal_year}")
     with col_next:
-        if st.button("\\>"):
+        if st.button(">"):
             st.session_state.cal_month += 1
             if st.session_state.cal_month > 12:
                 st.session_state.cal_month = 1
