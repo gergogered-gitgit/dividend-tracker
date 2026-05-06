@@ -60,56 +60,61 @@ if page == "Portfolio":
     if holdings:
         alerts = data.get_upcoming_alerts(holdings)
         if alerts:
-            for a in alerts:
-                css_class = "alert-item urgent" if a["urgent"] else "alert-item"
-                days_text = "TODAY" if a["days_left"] == 0 else f"in {a['days_left']} day{'s' if a['days_left'] != 1 else ''}"
-                st.markdown(
-                    f'<div class="{css_class}">'
-                    f'<span class="alert-text"><strong>{a["ticker"]}</strong> ex-dividend date approaching ({a["ex_date"]})</span>'
-                    f'<span class="alert-days">{days_text}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
+            urgent_count = sum(1 for a in alerts if a["urgent"])
+            alert_label = f"Ex-dividend alerts ({len(alerts)})"
+            if urgent_count:
+                alert_label += f" - {urgent_count} urgent"
+            with st.expander(alert_label, expanded=False):
+                for a in alerts:
+                    css_class = "alert-item urgent" if a["urgent"] else "alert-item"
+                    days_text = "TODAY" if a["days_left"] == 0 else f"in {a['days_left']} day{'s' if a['days_left'] != 1 else ''}"
+                    st.markdown(
+                        f'<div class="{css_class}">'
+                        f'<span class="alert-text"><strong>{a["ticker"]}</strong> ex-dividend date approaching ({a["ex_date"]})</span>'
+                        f'<span class="alert-days">{days_text}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
 
     # --- Add new holding ---
-    with st.expander("Add new holding", expanded=False):
-        search_query = st.text_input("Search company or ETF", placeholder="Type to search... e.g. Apple, Vanguard, TSLA")
+    st.subheader("Add New Holding")
+    search_query = st.text_input("Search company or ETF", placeholder="Type to search... e.g. Apple, Vanguard, TSLA")
 
-        if search_query:
-            results = data.search_tickers(search_query)
-            if results:
-                options = {f"{r['ticker']} — {r['name']} ({r['type']}, {r['exchange']})": r for r in results}
-                selected_label = st.selectbox("Select from results", list(options.keys()))
-                selected = options[selected_label]
+    if search_query:
+        results = data.search_tickers(search_query)
+        if results:
+            options = {f"{r['ticker']} — {r['name']} ({r['type']}, {r['exchange']})": r for r in results}
+            selected_label = st.selectbox("Select from results", list(options.keys()))
+            selected = options[selected_label]
 
-                # Show preview
-                info = data.get_stock_info(selected["ticker"])
-                price_display = data.convert_amount(info["price"], info.get("currency", "USD"), display_cur)
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Ticker", selected["ticker"])
-                col2.metric(f"Price ({display_cur})", data.fmt_money(price_display, display_cur) if price_display else "N/A")
-                col3.metric("Yield", f"{info['dividend_yield']:.2%}" if info["dividend_yield"] else "No dividend")
+            # Show preview
+            info = data.get_stock_info(selected["ticker"])
+            price_display = data.convert_amount(info["price"], info.get("currency", "USD"), display_cur)
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Ticker", selected["ticker"])
+            col2.metric(f"Price ({display_cur})", data.fmt_money(price_display, display_cur) if price_display else "N/A")
+            col3.metric("Yield", f"{info['dividend_yield']:.2%}" if info["dividend_yield"] else "No dividend")
 
-                shares = st.number_input(
-                    "Number of shares",
-                    min_value=0.0000001,
-                    value=1.0,
-                    step=0.0000001,
-                    format="%.7f",
+            shares = st.number_input(
+                "Number of shares",
+                min_value=0.0000001,
+                value=1.0,
+                step=0.0000001,
+                format="%.7f",
+            )
+
+            if st.button("Add holding"):
+                db.add_holding(
+                    ticker=selected["ticker"],
+                    shares=shares,
+                    company_name=info["name"],
+                    currency=info.get("currency", "USD"),
                 )
-
-                if st.button("Add holding"):
-                    db.add_holding(
-                        ticker=selected["ticker"],
-                        shares=shares,
-                        company_name=info["name"],
-                        currency=info.get("currency", "USD"),
-                    )
-                    st.success(f"Added {selected['ticker']} ({info['name']})")
-                    st.cache_data.clear()
-                    st.rerun()
-            else:
-                st.caption("No results found.")
+                st.success(f"Added {selected['ticker']} ({info['name']})")
+                st.cache_data.clear()
+                st.rerun()
+        else:
+            st.caption("No results found.")
 
     # --- Holdings table ---
     if not holdings:
