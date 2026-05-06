@@ -85,7 +85,13 @@ if page == "Portfolio":
                 col2.metric(f"Price ({display_cur})", data.fmt_money(price_display, display_cur) if price_display else "N/A")
                 col3.metric("Yield", f"{info['dividend_yield']:.2%}" if info["dividend_yield"] else "No dividend")
 
-                shares = st.number_input("Number of shares", min_value=0.001, value=1.0, step=0.1)
+                shares = st.number_input(
+                    "Number of shares",
+                    min_value=0.0000001,
+                    value=1.0,
+                    step=0.0000001,
+                    format="%.7f",
+                )
 
                 if st.button("Add holding"):
                     db.add_holding(
@@ -154,7 +160,7 @@ if page == "Portfolio":
         column_config={
             "Price": st.column_config.NumberColumn(f"Price ({display_cur})", format="%.2f"),
             "Annual Div": st.column_config.NumberColumn(f"Annual Div ({display_cur})", format="%.2f"),
-            "Shares": st.column_config.NumberColumn("Shares", format="%.3f"),
+            "Shares": st.column_config.NumberColumn("Shares", format="%.7f"),
         },
     )
 
@@ -166,9 +172,10 @@ if page == "Portfolio":
             with col1:
                 new_shares = st.number_input(
                     "Shares",
-                    min_value=0.001,
+                    min_value=0.0000001,
                     value=float(h["shares"]),
-                    step=0.1,
+                    step=0.0000001,
+                    format="%.7f",
                     key=f"shares_{h['id']}",
                 )
             with col2:
