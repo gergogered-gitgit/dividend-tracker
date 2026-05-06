@@ -65,20 +65,33 @@ def search_tickers(query: str) -> list[dict]:
     """
     if not query or len(query) < 2:
         return []
+
+    output = []
+    seen = set()
+
+    for symbol in _ticker_symbol_candidates(query):
+        result = _lookup_ticker_symbol(symbol)
+        if result and result["ticker"] not in seen:
+            output.append(result)
+            seen.add(result["ticker"])
+
     try:
         results = yf.Search(query)
         quotes = results.quotes if hasattr(results, "quotes") else []
-        output = []
         for q in quotes[:10]:
+            ticker = q.get("symbol", "")
+            if not ticker or ticker in seen:
+                continue
             output.append({
                 "ticker": q.get("symbol", ""),
                 "name": q.get("longname") or q.get("shortname") or q.get("symbol", ""),
                 "type": q.get("quoteType", ""),
                 "exchange": q.get("exchange", ""),
             })
+            seen.add(ticker)
         return output
     except Exception:
-        return []
+        return output
 
 
 # --- Dividend data ---
@@ -340,6 +353,41 @@ def _to_float(value) -> float:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _ticker_symbol_candidates(query: str) -> list[str]:
+    """Build direct ticker lookups for exact and common exchange-suffix searches."""
+    symbol = query.strip().upper()
+    if not symbol or " " in symbol:
+        return []
+
+    if "." in symbol:
+        return [symbol]
+
+    suffixes = ["AS", "L", "MI", "DE", "SW", "PA"]
+    return [symbol] + [f"{symbol}.{suffix}" for suffix in suffixes]
+
+
+def _lookup_ticker_symbol(symbol: str) -> dict:
+    """Look up a specific Yahoo symbol and return a search result row if it exists."""
+    try:
+        info = yf.Ticker(symbol).info
+    except Exception:
+        return None
+
+    quote_type = info.get("quoteType")
+    name = info.get("longName") or info.get("shortName")
+    exchange = info.get("exchange")
+
+    if not quote_type or quote_type == "NONE" or not name:
+        return None
+
+    return {
+        "ticker": symbol,
+        "name": name,
+        "type": quote_type,
+        "exchange": exchange or "",
+    }
 
 
 def _timestamp_to_date(ts):
