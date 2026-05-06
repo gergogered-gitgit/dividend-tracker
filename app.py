@@ -60,17 +60,13 @@ if page == "Portfolio":
     if holdings:
         alerts = data.get_upcoming_alerts(holdings)
         if alerts:
-            urgent_count = sum(1 for a in alerts if a["urgent"])
-            alert_label = f"Ex-dividend alerts ({len(alerts)})"
-            if urgent_count:
-                alert_label += f" - {urgent_count} urgent"
+            alert_label = f"Upcoming ex-dividend dates - next 14 days ({len(alerts)})"
             with st.expander(alert_label, expanded=False):
                 for a in alerts:
-                    css_class = "alert-item urgent" if a["urgent"] else "alert-item"
                     days_text = "TODAY" if a["days_left"] == 0 else f"in {a['days_left']} day{'s' if a['days_left'] != 1 else ''}"
                     st.markdown(
-                        f'<div class="{css_class}">'
-                        f'<span class="alert-text"><strong>{a["ticker"]}</strong> ex-dividend date approaching ({a["ex_date"]})</span>'
+                        f'<div class="alert-item">'
+                        f'<span class="alert-text"><strong>{a["ticker"]}</strong> ex-dividend date ({a["ex_date"]})</span>'
                         f'<span class="alert-days">{days_text}</span>'
                         f'</div>',
                         unsafe_allow_html=True,
