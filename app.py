@@ -145,13 +145,16 @@ if page == "Portfolio":
             "Annual Div": data.convert_amount(annual_div, stock_cur, display_cur),
             "Div Growth": growth_str,
             "_growth_class": growth_class,
+            "Pay Date": str(info.get("dividend_date")) if info.get("dividend_date") else "N/A",
             "Ex-Div Date": str(info["ex_dividend_date"]) if info["ex_dividend_date"] else "—",
             "_stock_cur": stock_cur,
         })
 
     # Display as a dataframe
     df = pd.DataFrame(rows)
-    display_df = df[["Ticker", "Company", "Shares", "Price", "Yield", "Annual Div", "Div Growth", "Ex-Div Date"]].copy()
+    display_df = df[
+        ["Ticker", "Company", "Shares", "Price", "Yield", "Annual Div", "Div Growth", "Ex-Div Date", "Pay Date"]
+    ].copy()
 
     st.dataframe(
         display_df,

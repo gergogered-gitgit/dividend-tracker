@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 @st.cache_data(ttl=3600)  # cache for 1 hour
 def get_stock_info(ticker: str) -> dict:
     """
-    Get basic stock info: name, price, dividend yield, currency, ex-dividend date.
+    Get basic stock info: name, price, dividend yield, currency, and dividend dates.
     Returns a dict with the relevant fields, or empty values on failure.
     """
     try:
@@ -44,6 +44,7 @@ def get_stock_info(ticker: str) -> dict:
             "dividend_rate": info.get("dividendRate") or info.get("trailingAnnualDividendRate"),
             "dividend_yield": _normalize_yield(info, price),
             "ex_dividend_date": _timestamp_to_date(info.get("exDividendDate")),
+            "dividend_date": _timestamp_to_date(info.get("dividendDate")),
         }
     except Exception:
         return {
@@ -53,6 +54,7 @@ def get_stock_info(ticker: str) -> dict:
             "dividend_rate": None,
             "dividend_yield": None,
             "ex_dividend_date": None,
+            "dividend_date": None,
         }
 
 

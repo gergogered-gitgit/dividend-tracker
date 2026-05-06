@@ -4,13 +4,24 @@ Track your dividend portfolio in one place. See upcoming payments on a visual ca
 
 ## Features
 
-- **Portfolio management** - search and add stocks/ETFs from Yahoo Finance, edit shares inline
-- **Dividend calendar** - visual monthly calendar showing when dividends are paid
+- **Portfolio management** - search and add stocks/ETFs from Yahoo Finance, edit shares inline, including fractional shares up to 7 decimal places
+- **Dividend calendar** - visual monthly calendar showing estimated upcoming dividend payments
 - **Ex-dividend alerts** - warns you when ex-dividend dates are approaching
+- **Dividend date tracking** - shows both ex-dividend dates and next payment dates when Yahoo Finance provides them
 - **Dividend growth tracking** - year-over-year dividend growth per holding
+- **Dividend yield display** - normalizes Yahoo Finance yield fields so values such as `0.38` display as `0.38%`, not `38%`
 - **Tax withholding estimates** - configurable rates for different countries/treaties
 - **Multi-currency** - live conversion between EUR, USD, and HUF
 - **3 themes** - Modern, Default, and Retro
+
+## Dividend Dates
+
+The app keeps two dividend date concepts separate:
+
+- **Ex-dividend date** - the eligibility cutoff. You generally need to own the stock before this date to receive the next dividend.
+- **Pay date** - the date the dividend cash is expected to be paid. This is the date most useful for income planning.
+
+The portfolio table shows both dates when Yahoo Finance provides them. The dividend calendar estimates upcoming payment dates from recent dividend history, so those calendar dates are projections rather than guaranteed company announcements.
 
 ## Setup
 
