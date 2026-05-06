@@ -64,9 +64,10 @@ if page == "Portfolio":
             with st.expander(alert_label, expanded=False):
                 for a in alerts:
                     days_text = "TODAY" if a["days_left"] == 0 else f"in {a['days_left']} day{'s' if a['days_left'] != 1 else ''}"
+                    holding_label = a.get("company") or a["ticker"]
                     st.markdown(
                         f'<div class="alert-item">'
-                        f'<span class="alert-text"><strong>{a["ticker"]}</strong> ex-dividend date ({a["ex_date"]})</span>'
+                        f'<span class="alert-text"><strong>{holding_label}</strong> ({a["ticker"]}) ex-dividend date ({a["ex_date"]})</span>'
                         f'<span class="alert-days">{days_text}</span>'
                         f'</div>',
                         unsafe_allow_html=True,
