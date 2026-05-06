@@ -89,6 +89,12 @@ def search_tickers(query: str) -> list[dict]:
                 "exchange": q.get("exchange", ""),
             })
             seen.add(ticker)
+
+            for symbol in _exchange_symbol_variants(ticker):
+                result = _lookup_ticker_symbol(symbol)
+                if result and result["ticker"] not in seen:
+                    output.append(result)
+                    seen.add(result["ticker"])
         return output
     except Exception:
         return output
@@ -364,8 +370,20 @@ def _ticker_symbol_candidates(query: str) -> list[str]:
     if "." in symbol:
         return [symbol]
 
+    if len(symbol) > 6:
+        return []
+
+    return [symbol] + _exchange_symbol_variants(symbol)
+
+
+def _exchange_symbol_variants(symbol: str) -> list[str]:
+    """Build common Yahoo exchange variants for an unsuffixed ticker symbol."""
+    symbol = symbol.strip().upper()
+    if not symbol or "." in symbol:
+        return []
+
     suffixes = ["AS", "DE", "F", "HM", "DU", "SG", "L", "MI", "SW", "PA"]
-    return [symbol] + [f"{symbol}.{suffix}" for suffix in suffixes]
+    return [f"{symbol}.{suffix}" for suffix in suffixes]
 
 
 def _lookup_ticker_symbol(symbol: str) -> dict:

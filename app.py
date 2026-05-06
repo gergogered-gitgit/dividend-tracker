@@ -106,38 +106,6 @@ if page == "Portfolio":
             else:
                 st.caption("No results found.")
 
-        exact_ticker = st.text_input("Exact Yahoo ticker", placeholder="e.g. WMT.DE, IDVY.AS").upper().strip()
-        if exact_ticker:
-            info = data.get_stock_info(exact_ticker)
-            if info["price"] is None and info["dividend_yield"] is None and info["name"] == exact_ticker:
-                st.caption("Ticker not found.")
-            else:
-                price_display = data.convert_amount(info["price"], info.get("currency", "USD"), display_cur)
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Ticker", exact_ticker)
-                col2.metric(f"Price ({display_cur})", data.fmt_money(price_display, display_cur) if price_display else "N/A")
-                col3.metric("Yield", f"{info['dividend_yield']:.2%}" if info["dividend_yield"] else "No dividend")
-
-                exact_shares = st.number_input(
-                    "Number of shares",
-                    min_value=0.0000001,
-                    value=1.0,
-                    step=0.0000001,
-                    format="%.7f",
-                    key="exact_ticker_shares",
-                )
-
-                if st.button("Add exact ticker"):
-                    db.add_holding(
-                        ticker=exact_ticker,
-                        shares=exact_shares,
-                        company_name=info["name"],
-                        currency=info.get("currency", "USD"),
-                    )
-                    st.success(f"Added {exact_ticker} ({info['name']})")
-                    st.cache_data.clear()
-                    st.rerun()
-
     # --- Holdings table ---
     if not holdings:
         st.info("No holdings yet. Add your first one above.")
