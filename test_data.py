@@ -27,6 +27,16 @@ class YieldNormalizationTests(unittest.TestCase):
 
         self.assertAlmostEqual(data._normalize_yield(info), 0.0038, places=4)
 
+    def test_conflicting_trailing_yield_uses_current_dividend_rate(self):
+        info = {
+            "dividendYield": 0.89,
+            "trailingAnnualDividendYield": 0.042329624,
+            "dividendRate": 3.51,
+            "currentPrice": 394.41,
+        }
+
+        self.assertAlmostEqual(data._normalize_yield(info), 0.0089, places=4)
+
     def test_percent_yield_over_one_is_normalized(self):
         info = {
             "dividendYield": 2.5,

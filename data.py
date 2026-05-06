@@ -366,15 +366,38 @@ def _normalize_yield(info: dict, price: float = None) -> float:
     while trailingAnnualDividendYield is already decimal (0.0038).
     yfinance sometimes returns values >1 (e.g. 2.0 meaning 2%) — normalize those.
     """
-    trailing_yield = _to_float(info.get("trailingAnnualDividendYield"))
-    if trailing_yield is not None:
-        return trailing_yield
-
     raw_yield = _to_float(info.get("dividendYield"))
-    if raw_yield is None:
+    trailing_yield = _to_float(info.get("trailingAnnualDividendYield"))
+    implied_yield = _implied_yield_from_rate(info, price)
+
+    candidates = []
+    if raw_yield is not None:
+        candidates.append(raw_yield / 100)
+    if trailing_yield is not None:
+        candidates.append(trailing_yield)
+
+    if not candidates:
         return None
 
-    return raw_yield / 100
+    if implied_yield is not None:
+        return min(candidates, key=lambda candidate: abs(candidate - implied_yield))
+
+    return candidates[0]
+
+
+def _implied_yield_from_rate(info: dict, price: float = None) -> float:
+    """Calculate dividend yield from annual dividend rate and price when available."""
+    annual_rate = _to_float(info.get("dividendRate"))
+    stock_price = _to_float(
+        price
+        or info.get("currentPrice")
+        or info.get("regularMarketPrice")
+        or info.get("regularMarketPreviousClose")
+        or info.get("previousClose")
+    )
+    if not annual_rate or not stock_price:
+        return None
+    return annual_rate / stock_price
 
 
 def _to_float(value) -> float:
