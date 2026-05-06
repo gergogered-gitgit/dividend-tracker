@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 import pandas as pd
 
 import data
@@ -77,6 +78,31 @@ class HistoryFallbackTests(unittest.TestCase):
 
         rate = data._annual_dividend_rate_from_history(FakeStock(), as_of=pd.Timestamp("2026-05-06"))
         self.assertAlmostEqual(rate, 4.75, places=4)
+
+    def test_get_stock_info_keeps_fallbacks_when_info_raises(self):
+        class FakeStock:
+            @property
+            def info(self):
+                raise RuntimeError("info unavailable")
+
+            @property
+            def fast_info(self):
+                return {"lastPrice": 100.0}
+
+            @property
+            def dividends(self):
+                return pd.Series(
+                    [6.71],
+                    index=pd.to_datetime(["2026-01-01"]),
+                )
+
+        with patch.object(data.yf, "Ticker", return_value=FakeStock()):
+            info = data.get_stock_info("XVALO")
+
+        self.assertEqual(info["name"], "XVALO")
+        self.assertAlmostEqual(info["price"], 100.0, places=4)
+        self.assertAlmostEqual(info["dividend_rate"], 6.71, places=4)
+        self.assertAlmostEqual(info["dividend_yield"], 0.0671, places=4)
 
 
 if __name__ == "__main__":

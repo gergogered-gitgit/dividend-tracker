@@ -36,51 +36,45 @@ def get_stock_info(ticker: str, market_data_version: str = MARKET_DATA_VERSION) 
     Get basic stock info: name, price, dividend yield, currency, and dividend dates.
     Returns a dict with the relevant fields, or empty values on failure.
     """
+    stock = yf.Ticker(ticker)
+    info = {}
+
     try:
-        stock = yf.Ticker(ticker)
-        info = stock.info
-
-        # Try multiple field names — yfinance changes these across versions
-        price = (
-            info.get("currentPrice")
-            or info.get("regularMarketPrice")
-            or info.get("regularMarketPreviousClose")
-            or info.get("previousClose")
-        )
-
-        # Fallback: use fast_info if .info didn't have the price
-        if not price:
-            try:
-                price = stock.fast_info.get("lastPrice") or stock.fast_info.get("regularMarketPrice")
-            except Exception:
-                pass
-
-        if not price:
-            price = _price_from_history(stock)
-
-        dividend_rate = info.get("dividendRate") or info.get("trailingAnnualDividendRate")
-        if not dividend_rate:
-            dividend_rate = _annual_dividend_rate_from_history(stock)
-
-        return {
-            "name": info.get("longName") or info.get("shortName") or ticker,
-            "price": price,
-            "currency": info.get("currency") or info.get("financialCurrency") or "USD",
-            "dividend_rate": dividend_rate,
-            "dividend_yield": _normalize_yield(info, price, annual_rate=dividend_rate),
-            "ex_dividend_date": _timestamp_to_date(info.get("exDividendDate")),
-            "dividend_date": _timestamp_to_date(info.get("dividendDate")),
-        }
+        info = stock.info or {}
     except Exception:
-        return {
-            "name": ticker,
-            "price": None,
-            "currency": "USD",
-            "dividend_rate": None,
-            "dividend_yield": None,
-            "ex_dividend_date": None,
-            "dividend_date": None,
-        }
+        info = {}
+
+    # Try multiple field names — yfinance changes these across versions
+    price = (
+        info.get("currentPrice")
+        or info.get("regularMarketPrice")
+        or info.get("regularMarketPreviousClose")
+        or info.get("previousClose")
+    )
+
+    # Fallback: use fast_info if .info didn't have the price
+    if not price:
+        try:
+            price = stock.fast_info.get("lastPrice") or stock.fast_info.get("regularMarketPrice")
+        except Exception:
+            pass
+
+    if not price:
+        price = _price_from_history(stock)
+
+    dividend_rate = info.get("dividendRate") or info.get("trailingAnnualDividendRate")
+    if not dividend_rate:
+        dividend_rate = _annual_dividend_rate_from_history(stock)
+
+    return {
+        "name": info.get("longName") or info.get("shortName") or ticker,
+        "price": price,
+        "currency": info.get("currency") or info.get("financialCurrency") or "USD",
+        "dividend_rate": dividend_rate,
+        "dividend_yield": _normalize_yield(info, price, annual_rate=dividend_rate),
+        "ex_dividend_date": _timestamp_to_date(info.get("exDividendDate")),
+        "dividend_date": _timestamp_to_date(info.get("dividendDate")),
+    }
 
 
 def search_tickers(query: str) -> list[dict]:
