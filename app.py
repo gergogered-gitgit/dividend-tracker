@@ -367,25 +367,51 @@ elif page == "Dividend Calendar":
 
     # --- 12-month bar chart ---
     st.subheader(f"Monthly Breakdown — Expected Payouts ({display_cur})")
-    monthly_data = {}
-    for e in all_upcoming:
-        month_key = e["date"].strftime("%Y-%m")
-        monthly_data[month_key] = monthly_data.get(month_key, 0) + (e["total_eur"] or 0)
-
-    # Build 12 months starting from current month
-    chart_months = []
+    month_order = []
+    month_lookup = {}
     for i in range(12):
         m = today.month + i
         y = today.year
         while m > 12:
             m -= 12
             y += 1
-        key = f"{y}-{m:02d}"
-        label = cal_module.month_abbr[m]
-        chart_months.append({"Month": label, f"Payout ({display_cur})": monthly_data.get(key, 0)})
+        month_key = f"{y}-{m:02d}"
+        month_order.append(month_key)
+        month_lookup[month_key] = cal_module.month_abbr[m]
 
-    chart_df = pd.DataFrame(chart_months)
-    st.bar_chart(chart_df.set_index("Month"))
+    chart_rows = []
+    for e in all_upcoming:
+        month_key = e["date"].strftime("%Y-%m")
+        if month_key not in month_lookup:
+            continue
+        chart_rows.append({
+            "MonthKey": month_key,
+            "Month": month_lookup[month_key],
+            "Company": e["company"],
+            f"Payout ({display_cur})": float(e["total_eur"] or 0),
+        })
+
+    if chart_rows:
+        chart_df = pd.DataFrame(chart_rows)
+        month_order_labels = [month_lookup[key] for key in month_order]
+        chart = (
+            alt.Chart(chart_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("Month:N", sort=month_order_labels, title=None),
+                y=alt.Y(f"Payout ({display_cur}):Q", stack="zero", title=f"Payout ({display_cur})"),
+                color=alt.Color("Company:N", title="Holding", legend=alt.Legend(orient="right")),
+                tooltip=[
+                    alt.Tooltip("Month:N", title="Month"),
+                    alt.Tooltip("Company:N", title="Holding"),
+                    alt.Tooltip(f"Payout ({display_cur}):Q", title=f"Payout ({display_cur})", format=",.2f"),
+                ],
+            )
+            .properties(height=320)
+        )
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        st.info("No expected payouts in the next 12 months.")
 
 
 # ============================================================
