@@ -8,6 +8,22 @@ import yfinance as yf
 import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
+
+
+YAHOO_EXCHANGE_SUFFIXES = [
+    # Europe
+    "AS", "L", "DE", "F", "HM", "DU", "SG", "BE", "MU", "HA", "SW", "PA",
+    "BR", "LS", "MC", "MI", "VI", "ST", "CO", "HE", "OL", "IC", "IR", "WA",
+    "PR", "BD", "AT", "IS", "TA",
+    # North and South America
+    "TO", "V", "CN", "NE", "MX", "SA", "BA", "SN",
+    # Asia-Pacific
+    "T", "HK", "SS", "SZ", "SI", "AX", "NZ", "KS", "KQ", "TW", "TWO",
+    "NS", "BO", "JK", "KL", "BK",
+    # Africa and Middle East
+    "JO", "CA", "QA", "AE",
+]
 
 
 # --- Stock info & search ---
@@ -69,8 +85,7 @@ def search_tickers(query: str) -> list[dict]:
     output = []
     seen = set()
 
-    for symbol in _ticker_symbol_candidates(query):
-        result = _lookup_ticker_symbol(symbol)
+    for result in _lookup_ticker_symbols(_ticker_symbol_candidates(query)):
         if result and result["ticker"] not in seen:
             output.append(result)
             seen.add(result["ticker"])
@@ -90,8 +105,7 @@ def search_tickers(query: str) -> list[dict]:
             })
             seen.add(ticker)
 
-            for symbol in _exchange_symbol_variants(ticker):
-                result = _lookup_ticker_symbol(symbol)
+            for result in _lookup_ticker_symbols(_exchange_symbol_variants(ticker)):
                 if result and result["ticker"] not in seen:
                     output.append(result)
                     seen.add(result["ticker"])
@@ -382,10 +396,19 @@ def _exchange_symbol_variants(symbol: str) -> list[str]:
     if not symbol or "." in symbol:
         return []
 
-    suffixes = ["AS", "DE", "F", "HM", "DU", "SG", "L", "MI", "SW", "PA"]
-    return [f"{symbol}.{suffix}" for suffix in suffixes]
+    return [f"{symbol}.{suffix}" for suffix in YAHOO_EXCHANGE_SUFFIXES]
 
 
+def _lookup_ticker_symbols(symbols: list[str]) -> list[dict]:
+    """Look up Yahoo symbols concurrently while preserving the input order."""
+    if not symbols:
+        return []
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        return list(executor.map(_lookup_ticker_symbol, symbols))
+
+
+@st.cache_data(ttl=3600)
 def _lookup_ticker_symbol(symbol: str) -> dict:
     """Look up a specific Yahoo symbol and return a search result row if it exists."""
     try:
