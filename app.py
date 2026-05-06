@@ -430,7 +430,7 @@ elif page == "Summary":
         breakdown_df = breakdown_df.sort_values(div_col, ascending=False)
 
         st.subheader("Dividend Income Mix")
-        chart_col, table_col = st.columns([1, 1.4])
+        chart_col, table_col = st.columns([1, 1.4], vertical_alignment="top")
 
         with chart_col:
             income_chart_df = breakdown_df[breakdown_df[div_col] > 0].copy()
@@ -441,8 +441,8 @@ elif page == "Summary":
                     .encode(
                         theta=alt.Theta(f"{div_col}:Q"),
                         color=alt.Color(
-                            "Name:N",
-                            legend=alt.Legend(title="Holding", orient="bottom", columns=1),
+                            "Ticker:N",
+                            legend=None,
                             scale=alt.Scale(scheme="tableau20"),
                         ),
                         tooltip=[
