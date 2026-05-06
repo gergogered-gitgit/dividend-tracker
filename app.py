@@ -400,6 +400,7 @@ elif page == "Summary":
         total_annual_div += annual_display
 
         breakdown.append({
+            "Name": info["name"],
             "Ticker": h["ticker"],
             f"Value ({display_cur})": value,
             f"Annual Div ({display_cur})": annual_display,
@@ -425,6 +426,7 @@ elif page == "Summary":
         breakdown_df["Holding Yield"] = (
             breakdown_df[div_col] / breakdown_df[value_col] * 100
         ).where(breakdown_df[value_col] > 0, 0).round(2)
+        breakdown_df["Income Share"] = breakdown_df["% of Income"] / 100
         breakdown_df = breakdown_df.sort_values(div_col, ascending=False)
 
         st.subheader("Dividend Income Mix")
@@ -435,19 +437,24 @@ elif page == "Summary":
             if not income_chart_df.empty:
                 income_chart = (
                     alt.Chart(income_chart_df)
-                    .mark_arc(innerRadius=55, outerRadius=115)
+                    .mark_arc(innerRadius=70, outerRadius=125, stroke="#0f1116", strokeWidth=2)
                     .encode(
                         theta=alt.Theta(f"{div_col}:Q"),
-                        color=alt.Color("Ticker:N", legend=alt.Legend(title="Ticker")),
+                        color=alt.Color(
+                            "Name:N",
+                            legend=alt.Legend(title="Holding", orient="bottom", columns=1),
+                            scale=alt.Scale(scheme="tableau20"),
+                        ),
                         tooltip=[
+                            alt.Tooltip("Name:N", title="Holding"),
                             alt.Tooltip("Ticker:N"),
                             alt.Tooltip(f"{div_col}:Q", title=f"Annual Div ({display_cur})", format=",.2f"),
+                            alt.Tooltip("Income Share:Q", title="% of Income", format=".1%"),
                             alt.Tooltip(f"{value_col}:Q", title=f"Value ({display_cur})", format=",.2f"),
-                            alt.Tooltip("% of Income:Q", format=".1f"),
-                            alt.Tooltip("Holding Yield:Q", format=".2f"),
+                            alt.Tooltip("Holding Yield:Q", title="Yield on Value", format=".2f"),
                         ],
                     )
-                    .properties(height=330)
+                    .properties(height=380)
                 )
                 st.altair_chart(income_chart, use_container_width=True)
             else:
@@ -455,10 +462,11 @@ elif page == "Summary":
 
         with table_col:
             st.dataframe(
-                breakdown_df[["Ticker", div_col, "% of Income", value_col, "Holding Yield"]],
+                breakdown_df[["Name", "Ticker", div_col, "% of Income", value_col, "Holding Yield"]],
                 use_container_width=True,
                 hide_index=True,
                 column_config={
+                    "Name": st.column_config.TextColumn("Holding"),
                     div_col: st.column_config.NumberColumn(format="%.2f"),
                     "% of Income": st.column_config.ProgressColumn(
                         "% of Income", min_value=0, max_value=100, format="%.1f%%"
