@@ -174,33 +174,54 @@ if page == "Portfolio":
         },
     )
 
-    # --- Manage holdings ---
-    st.subheader("Manage holdings")
-    for h in holdings:
-        with st.expander(f"{h['ticker']} — {h.get('company_name', '')}"):
-            col1, col2, col3 = st.columns([3, 1, 1])
-            with col1:
-                new_shares = st.number_input(
-                    "Shares",
-                    min_value=0.0000001,
-                    value=float(h["shares"]),
-                    step=0.0000001,
-                    format="%.7f",
-                    key=f"shares_{h['id']}",
-                )
-            with col2:
-                if st.button("Update", key=f"update_{h['id']}"):
-                    db.update_holding(h["id"], {"shares": new_shares})
-                    st.success(f"Updated {h['ticker']}")
-                    st.cache_data.clear()
-                    st.rerun()
-            with col3:
-                if st.button("Delete", key=f"delete_{h['id']}", type="secondary"):
-                    db.delete_holding(h["id"])
-                    st.success(f"Deleted {h['ticker']}")
-                    st.cache_data.clear()
-                    st.rerun()
+    # --- Inline holdings editor ---
+    st.subheader("Edit holdings")
+    st.caption("Edit shares directly in the grid or mark rows for deletion, then save once.")
 
+    editor_df = df[["id", "Ticker", "Company", "Shares"]].copy()
+    editor_df["Delete"] = False
+
+    edited_df = st.data_editor(
+        editor_df,
+        use_container_width=True,
+        hide_index=True,
+        num_rows="fixed",
+        disabled=["id", "Ticker", "Company"],
+        column_config={
+            "id": st.column_config.TextColumn("ID"),
+            "Ticker": st.column_config.TextColumn("Ticker"),
+            "Company": st.column_config.TextColumn("Company"),
+            "Shares": st.column_config.NumberColumn("Shares", format="%.7f", min_value=0.0000001, step=0.0000001),
+            "Delete": st.column_config.CheckboxColumn("Delete"),
+        },
+        key="holdings_editor",
+    )
+
+    save_col, _ = st.columns([1, 5])
+    with save_col:
+        save_edits = st.button("Save changes", type="primary")
+
+    if save_edits:
+        changes_made = False
+        for _, row in edited_df.iterrows():
+            original = df.loc[df["id"] == row["id"]].iloc[0]
+            if bool(row["Delete"]):
+                db.delete_holding(row["id"])
+                changes_made = True
+                continue
+
+            new_shares = float(row["Shares"])
+            old_shares = float(original["Shares"])
+            if abs(new_shares - old_shares) > 1e-10:
+                db.update_holding(row["id"], {"shares": new_shares})
+                changes_made = True
+
+        if changes_made:
+            st.success("Holdings updated")
+            st.cache_data.clear()
+            st.rerun()
+        else:
+            st.info("No changes to save.")
 
 # ============================================================
 # DIVIDEND CALENDAR PAGE
@@ -510,3 +531,4 @@ elif page == "Summary":
         f'ETFs may have different withholding rules.</p>',
         unsafe_allow_html=True,
     )
+
