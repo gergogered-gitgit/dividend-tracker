@@ -42,7 +42,7 @@ def get_stock_info(ticker: str) -> dict:
             "price": price,
             "currency": info.get("currency") or info.get("financialCurrency") or "USD",
             "dividend_rate": info.get("dividendRate") or info.get("trailingAnnualDividendRate"),
-            "dividend_yield": _normalize_yield(info),
+            "dividend_yield": _normalize_yield(info, price),
             "ex_dividend_date": _timestamp_to_date(info.get("exDividendDate")),
         }
     except Exception:
@@ -312,19 +312,32 @@ def fmt_money(value: float, currency: str) -> str:
 
 # --- Helper functions ---
 
-def _normalize_yield(info: dict) -> float:
+def _normalize_yield(info: dict, price: float = None) -> float:
     """
     Get dividend yield as a decimal where 0.02 = 2%.
+    Yahoo's dividendYield field is percentage points (0.38 = 0.38%),
+    while trailingAnnualDividendYield is already decimal (0.0038).
     yfinance sometimes returns values >1 (e.g. 2.0 meaning 2%) — normalize those.
     """
-    y = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
-    if y is None:
+    trailing_yield = _to_float(info.get("trailingAnnualDividendYield"))
+    if trailing_yield is not None:
+        return trailing_yield
+
+    raw_yield = _to_float(info.get("dividendYield"))
+    if raw_yield is None:
         return None
-    # If yield is greater than 1, it's likely in percentage form (e.g. 2.0 = 2%)
-    # Convert to decimal (0.02)
-    if y > 1:
-        y = y / 100
-    return y
+
+    return raw_yield / 100
+
+
+def _to_float(value) -> float:
+    """Convert numeric API values to float, or return None."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _timestamp_to_date(ts):
