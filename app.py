@@ -178,7 +178,7 @@ if page == "Portfolio":
     st.subheader("Edit holdings")
     st.caption("Edit shares directly in the grid or mark rows for deletion, then save once.")
 
-    editor_df = df[["id", "Ticker", "Company", "Shares"]].copy()
+    editor_df = df[["Ticker", "Company", "Shares"]].copy()
     editor_df["Delete"] = False
 
     edited_df = st.data_editor(
@@ -186,9 +186,8 @@ if page == "Portfolio":
         use_container_width=True,
         hide_index=True,
         num_rows="fixed",
-        disabled=["id", "Ticker", "Company"],
+        disabled=["Ticker", "Company"],
         column_config={
-            "id": st.column_config.TextColumn("ID"),
             "Ticker": st.column_config.TextColumn("Ticker"),
             "Company": st.column_config.TextColumn("Company"),
             "Shares": st.column_config.NumberColumn("Shares", format="%.7f", min_value=0.0000001, step=0.0000001),
@@ -203,17 +202,17 @@ if page == "Portfolio":
 
     if save_edits:
         changes_made = False
-        for _, row in edited_df.iterrows():
-            original = df.loc[df["id"] == row["id"]].iloc[0]
+        for idx, (_, row) in enumerate(edited_df.iterrows()):
+            original = df.iloc[idx]
             if bool(row["Delete"]):
-                db.delete_holding(row["id"])
+                db.delete_holding(original["id"])
                 changes_made = True
                 continue
 
             new_shares = float(row["Shares"])
             old_shares = float(original["Shares"])
             if abs(new_shares - old_shares) > 1e-10:
-                db.update_holding(row["id"], {"shares": new_shares})
+                db.update_holding(original["id"], {"shares": new_shares})
                 changes_made = True
 
         if changes_made:
