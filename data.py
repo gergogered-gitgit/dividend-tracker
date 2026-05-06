@@ -25,7 +25,7 @@ YAHOO_EXCHANGE_SUFFIXES = [
     "JO", "CA", "QA", "AE",
 ]
 
-MARKET_DATA_VERSION = "2026-05-06-yield-v2"
+MARKET_DATA_VERSION = "2026-05-06-yield-v3"
 
 
 # --- Stock info & search ---
@@ -55,12 +55,19 @@ def get_stock_info(ticker: str, market_data_version: str = MARKET_DATA_VERSION) 
             except Exception:
                 pass
 
+        if not price:
+            price = _price_from_history(stock)
+
+        dividend_rate = info.get("dividendRate") or info.get("trailingAnnualDividendRate")
+        if not dividend_rate:
+            dividend_rate = _annual_dividend_rate_from_history(stock)
+
         return {
             "name": info.get("longName") or info.get("shortName") or ticker,
             "price": price,
             "currency": info.get("currency") or info.get("financialCurrency") or "USD",
-            "dividend_rate": info.get("dividendRate") or info.get("trailingAnnualDividendRate"),
-            "dividend_yield": _normalize_yield(info, price),
+            "dividend_rate": dividend_rate,
+            "dividend_yield": _normalize_yield(info, price, annual_rate=dividend_rate),
             "ex_dividend_date": _timestamp_to_date(info.get("exDividendDate")),
             "dividend_date": _timestamp_to_date(info.get("dividendDate")),
         }
@@ -361,7 +368,7 @@ def fmt_money(value: float, currency: str) -> str:
 
 # --- Helper functions ---
 
-def _normalize_yield(info: dict, price: float = None) -> float:
+def _normalize_yield(info: dict, price: float = None, annual_rate: float = None) -> float:
     """
     Get dividend yield as a decimal where 0.02 = 2%.
     Yahoo's dividendYield field is percentage points (0.38 = 0.38%),
@@ -370,7 +377,7 @@ def _normalize_yield(info: dict, price: float = None) -> float:
     """
     raw_yield = _to_float(info.get("dividendYield"))
     trailing_yield = _to_float(info.get("trailingAnnualDividendYield"))
-    implied_yield = _implied_yield_from_rate(info, price)
+    implied_yield = _implied_yield_from_rate(info, price, annual_rate=annual_rate)
 
     candidates = []
     if raw_yield is not None:
@@ -378,18 +385,20 @@ def _normalize_yield(info: dict, price: float = None) -> float:
     if trailing_yield is not None:
         candidates.append(trailing_yield)
 
+    if implied_yield is not None:
+        if not candidates:
+            return implied_yield
+        return min(candidates, key=lambda candidate: abs(candidate - implied_yield))
+
     if not candidates:
         return None
-
-    if implied_yield is not None:
-        return min(candidates, key=lambda candidate: abs(candidate - implied_yield))
 
     return candidates[0]
 
 
-def _implied_yield_from_rate(info: dict, price: float = None) -> float:
+def _implied_yield_from_rate(info: dict, price: float = None, annual_rate: float = None) -> float:
     """Calculate dividend yield from annual dividend rate and price when available."""
-    annual_rate = _to_float(info.get("dividendRate"))
+    annual_rate = _to_float(annual_rate if annual_rate is not None else info.get("dividendRate"))
     stock_price = _to_float(
         price
         or info.get("currentPrice")
@@ -400,6 +409,44 @@ def _implied_yield_from_rate(info: dict, price: float = None) -> float:
     if not annual_rate or not stock_price:
         return None
     return annual_rate / stock_price
+
+
+def _price_from_history(stock) -> float:
+    """Fallback to the latest close price from recent history."""
+    try:
+        history = stock.history(period="5d", auto_adjust=False)
+        if history is None or history.empty:
+            return None
+
+        for column in ("Close", "Adj Close"):
+            if column in history.columns:
+                series = history[column].dropna()
+                if not series.empty:
+                    return _to_float(series.iloc[-1])
+    except Exception:
+        pass
+
+    return None
+
+
+def _annual_dividend_rate_from_history(stock, as_of: pd.Timestamp = None) -> float:
+    """Estimate trailing annual dividend rate from the past 12 months of dividend history."""
+    try:
+        dividends = stock.dividends
+        if dividends.empty:
+            return None
+
+        dividends = dividends.copy()
+        dividends.index = dividends.index.tz_localize(None)
+
+        now = as_of or pd.Timestamp.now()
+        cutoff = now - pd.Timedelta(days=365)
+        recent = dividends[dividends.index >= cutoff]
+        if recent.empty:
+            return None
+        return float(recent.sum())
+    except Exception:
+        return None
 
 
 def _to_float(value) -> float:
