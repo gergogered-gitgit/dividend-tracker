@@ -27,6 +27,10 @@ display_cur = st.sidebar.selectbox("Display currency", ["EUR", "USD", "HUF"], in
 st.sidebar.divider()
 page = st.sidebar.radio("Navigate", ["Portfolio", "Dividend Calendar", "Summary"])
 
+if st.sidebar.button("Refresh market data"):
+    st.cache_data.clear()
+    st.rerun()
+
 # Theme at the bottom of sidebar
 st.sidebar.divider()
 theme = st.sidebar.selectbox("Theme", ["Modern", "Default", "Retro"], index=0)

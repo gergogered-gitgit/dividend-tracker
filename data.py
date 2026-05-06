@@ -25,11 +25,13 @@ YAHOO_EXCHANGE_SUFFIXES = [
     "JO", "CA", "QA", "AE",
 ]
 
+MARKET_DATA_VERSION = "2026-05-06-yield-v2"
+
 
 # --- Stock info & search ---
 
 @st.cache_data(ttl=3600)  # cache for 1 hour
-def get_stock_info(ticker: str) -> dict:
+def get_stock_info(ticker: str, market_data_version: str = MARKET_DATA_VERSION) -> dict:
     """
     Get basic stock info: name, price, dividend yield, currency, and dividend dates.
     Returns a dict with the relevant fields, or empty values on failure.
