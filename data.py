@@ -364,7 +364,7 @@ def _ticker_symbol_candidates(query: str) -> list[str]:
     if "." in symbol:
         return [symbol]
 
-    suffixes = ["AS", "L", "MI", "DE", "SW", "PA"]
+    suffixes = ["AS", "DE", "F", "HM", "DU", "SG", "L", "MI", "SW", "PA"]
     return [symbol] + [f"{symbol}.{suffix}" for suffix in suffixes]
 
 
