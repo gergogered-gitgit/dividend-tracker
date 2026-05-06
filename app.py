@@ -5,6 +5,7 @@ Track your portfolio dividends with a simple interface.
 
 import streamlit as st
 import pandas as pd
+import altair as alt
 from datetime import datetime, date
 import calendar as cal_module
 
@@ -406,35 +407,60 @@ elif page == "Summary":
     portfolio_yield = (total_annual_div / total_value * 100) if total_value > 0 else 0
     col4.metric("Portfolio Yield", f"{portfolio_yield:.2f}%")
 
-    # --- Breakdown table ---
-    st.subheader("Breakdown by Holding")
+    # --- Income allocation ---
     breakdown_df = pd.DataFrame(breakdown)
     if not breakdown_df.empty:
         # Add % of income
         div_col = f"Annual Div ({display_cur})"
+        value_col = f"Value ({display_cur})"
         breakdown_df["% of Income"] = (
             breakdown_df[div_col] / total_annual_div * 100
         ).round(1) if total_annual_div > 0 else 0
+        breakdown_df["Holding Yield"] = (
+            breakdown_df[div_col] / breakdown_df[value_col] * 100
+        ).where(breakdown_df[value_col] > 0, 0).round(2)
+        breakdown_df = breakdown_df.sort_values(div_col, ascending=False)
 
-        st.dataframe(
-            breakdown_df,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                f"Value ({display_cur})": st.column_config.NumberColumn(format="%.2f"),
-                f"Annual Div ({display_cur})": st.column_config.NumberColumn(format="%.2f"),
-                "% of Income": st.column_config.ProgressColumn(
-                    "% of Income", min_value=0, max_value=100, format="%.1f%%"
-                ),
-            },
-        )
+        st.subheader("Dividend Income Mix")
+        chart_col, table_col = st.columns([1, 1.4])
 
-    # --- Annual dividend income per holding chart ---
-    st.subheader(f"Annual Dividend Income per Holding ({display_cur})")
-    if breakdown_df is not None and not breakdown_df.empty:
-        chart_data = breakdown_df[breakdown_df[div_col] > 0].set_index("Ticker")[[div_col]]
-        if not chart_data.empty:
-            st.bar_chart(chart_data)
+        with chart_col:
+            income_chart_df = breakdown_df[breakdown_df[div_col] > 0].copy()
+            if not income_chart_df.empty:
+                income_chart = (
+                    alt.Chart(income_chart_df)
+                    .mark_arc(innerRadius=55, outerRadius=115)
+                    .encode(
+                        theta=alt.Theta(f"{div_col}:Q"),
+                        color=alt.Color("Ticker:N", legend=alt.Legend(title="Ticker")),
+                        tooltip=[
+                            alt.Tooltip("Ticker:N"),
+                            alt.Tooltip(f"{div_col}:Q", title=f"Annual Div ({display_cur})", format=",.2f"),
+                            alt.Tooltip(f"{value_col}:Q", title=f"Value ({display_cur})", format=",.2f"),
+                            alt.Tooltip("% of Income:Q", format=".1f"),
+                            alt.Tooltip("Holding Yield:Q", format=".2f"),
+                        ],
+                    )
+                    .properties(height=330)
+                )
+                st.altair_chart(income_chart, use_container_width=True)
+            else:
+                st.info("No dividend income to chart yet.")
+
+        with table_col:
+            st.dataframe(
+                breakdown_df[["Ticker", div_col, "% of Income", value_col, "Holding Yield"]],
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    div_col: st.column_config.NumberColumn(format="%.2f"),
+                    "% of Income": st.column_config.ProgressColumn(
+                        "% of Income", min_value=0, max_value=100, format="%.1f%%"
+                    ),
+                    value_col: st.column_config.NumberColumn(format="%.2f"),
+                    "Holding Yield": st.column_config.NumberColumn("Yield on Value", format="%.2f%%"),
+                },
+            )
 
     # --- Tax withholding estimate ---
     st.subheader("Tax Withholding Estimate")

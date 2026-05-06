@@ -84,11 +84,14 @@ def search_tickers(query: str) -> list[dict]:
 
     output = []
     seen = set()
+    symbols_to_expand = []
 
     for result in _lookup_ticker_symbols(_ticker_symbol_candidates(query)):
         if result and result["ticker"] not in seen:
             output.append(result)
             seen.add(result["ticker"])
+            if _is_expandable_base_symbol(result["ticker"]):
+                symbols_to_expand.append(result["ticker"])
 
     try:
         results = yf.Search(query)
@@ -105,13 +108,22 @@ def search_tickers(query: str) -> list[dict]:
             })
             seen.add(ticker)
 
-            for result in _lookup_ticker_symbols(_exchange_symbol_variants(ticker)):
-                if result and result["ticker"] not in seen:
-                    output.append(result)
-                    seen.add(result["ticker"])
-        return output
+            if (
+                q.get("quoteType") in {"EQUITY", "ETF"}
+                and _is_expandable_base_symbol(ticker)
+                and _should_expand_symbol(query, ticker)
+            ):
+                symbols_to_expand.append(ticker)
     except Exception:
-        return output
+        pass
+
+    for symbol in _unique_preserving_order(symbols_to_expand)[:3]:
+        for result in _lookup_ticker_symbols(_exchange_symbol_variants(symbol)):
+            if result and result["ticker"] not in seen:
+                output.append(result)
+                seen.add(result["ticker"])
+
+    return output
 
 
 # --- Dividend data ---
@@ -376,7 +388,7 @@ def _to_float(value) -> float:
 
 
 def _ticker_symbol_candidates(query: str) -> list[str]:
-    """Build direct ticker lookups for exact and common exchange-suffix searches."""
+    """Build direct lookups for exact ticker searches."""
     symbol = query.strip().upper()
     if not symbol or " " in symbol:
         return []
@@ -387,7 +399,33 @@ def _ticker_symbol_candidates(query: str) -> list[str]:
     if len(symbol) > 6:
         return []
 
-    return [symbol] + _exchange_symbol_variants(symbol)
+    return [symbol]
+
+
+def _is_expandable_base_symbol(symbol: str) -> bool:
+    """Return whether a symbol is a short unsuffixed ticker worth exchange probing."""
+    return bool(symbol) and "." not in symbol and len(symbol) <= 5
+
+
+def _should_expand_symbol(query: str, symbol: str) -> bool:
+    """Decide whether a Yahoo result should get exchange-variant probing."""
+    normalized_query = query.strip().upper()
+    if not normalized_query or "." in normalized_query:
+        return False
+    if normalized_query == symbol:
+        return True
+    return len(normalized_query) > 5 or " " in normalized_query
+
+
+def _unique_preserving_order(items: list[str]) -> list[str]:
+    """Deduplicate a list while preserving its order."""
+    seen = set()
+    unique = []
+    for item in items:
+        if item not in seen:
+            unique.append(item)
+            seen.add(item)
+    return unique
 
 
 def _exchange_symbol_variants(symbol: str) -> list[str]:
