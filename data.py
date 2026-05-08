@@ -82,50 +82,91 @@ def search_tickers(query: str) -> list[dict]:
     Search Yahoo Finance for tickers matching a query string.
     Returns a list of dicts with: ticker, name, type, exchange.
     """
-    if not query or len(query) < 2:
+    if not query or len(query.strip()) < 2:
         return []
 
-    output = []
-    seen = set()
-    symbols_to_expand = []
+    normalized_query = query.strip()
+    collected: dict[str, dict] = {}
 
-    for result in _lookup_ticker_symbols(_ticker_symbol_candidates(query)):
-        if result and result["ticker"] not in seen:
-            output.append(result)
-            seen.add(result["ticker"])
-            if _is_expandable_base_symbol(result["ticker"]):
-                symbols_to_expand.append(result["ticker"])
+    def add_candidate(result: dict, source_term: str = None, anchor_search: bool = False):
+        if not result:
+            return
+        ticker = result.get("ticker")
+        if not ticker:
+            return
 
-    try:
-        results = yf.Search(query)
-        quotes = results.quotes if hasattr(results, "quotes") else []
-        for q in quotes[:10]:
-            ticker = q.get("symbol", "")
-            if not ticker or ticker in seen:
-                continue
-            output.append({
-                "ticker": q.get("symbol", ""),
-                "name": q.get("longname") or q.get("shortname") or q.get("symbol", ""),
+        score = _score_search_result(
+            normalized_query,
+            ticker,
+            result.get("name") or "",
+            result.get("type") or "",
+            result.get("exchange") or "",
+            source_term=source_term,
+            anchor_search=anchor_search,
+        )
+        candidate = {
+            "ticker": ticker,
+            "name": result.get("name") or ticker,
+            "type": result.get("type") or "",
+            "exchange": result.get("exchange") or "",
+            "_score": score,
+        }
+
+        current = collected.get(ticker)
+        if not current or candidate["_score"] > current["_score"]:
+            collected[ticker] = candidate
+
+    def add_quote_result(q: dict, source_term: str = None, anchor_search: bool = False):
+        ticker = q.get("symbol", "")
+        if not ticker:
+            return
+        add_candidate(
+            {
+                "ticker": ticker,
+                "name": q.get("longname") or q.get("shortname") or ticker,
                 "type": q.get("quoteType", ""),
                 "exchange": q.get("exchange", ""),
-            })
-            seen.add(ticker)
+            },
+            source_term=source_term,
+            anchor_search=anchor_search,
+        )
 
-            if (
-                q.get("quoteType") in {"EQUITY", "ETF"}
-                and _is_expandable_base_symbol(ticker)
-                and _should_expand_symbol(query, ticker)
-            ):
-                symbols_to_expand.append(ticker)
-    except Exception:
-        pass
+    def search_quotes(term: str) -> list[dict]:
+        try:
+            results = yf.Search(term)
+            return results.quotes if hasattr(results, "quotes") else []
+        except Exception:
+            return []
 
-    for symbol in _unique_preserving_order(symbols_to_expand)[:3]:
+    # Direct ticker candidates first.
+    for result in _lookup_ticker_symbols(_ticker_symbol_candidates(normalized_query)):
+        add_candidate(result, source_term=normalized_query)
+
+    # Primary Yahoo search pass.
+    raw_quotes = search_quotes(normalized_query)
+    for q in raw_quotes[:30]:
+        add_quote_result(q, source_term=normalized_query)
+
+    # Follow-up pass on company-name anchors extracted from the first search.
+    for anchor in _extract_anchor_terms(raw_quotes, normalized_query)[:3]:
+        for q in search_quotes(anchor)[:30]:
+            add_quote_result(q, source_term=anchor, anchor_search=True)
+
+    # Expand a small number of promising base symbols into common exchange variants.
+    symbols_to_expand = []
+    for result in sorted(collected.values(), key=lambda row: (-row["_score"], row["ticker"])):
+        if _is_expandable_base_symbol(result["ticker"]):
+            symbols_to_expand.append(result["ticker"])
+        if len(symbols_to_expand) >= 3:
+            break
+
+    for symbol in _unique_preserving_order(symbols_to_expand):
         for result in _lookup_ticker_symbols(_exchange_symbol_variants(symbol)):
-            if result and result["ticker"] not in seen:
-                output.append(result)
-                seen.add(result["ticker"])
+            add_candidate(result, source_term=symbol)
 
+    output = sorted(collected.values(), key=lambda row: (-row["_score"], row["ticker"]))
+    for row in output:
+        row.pop("_score", None)
     return output
 
 
@@ -492,6 +533,121 @@ def _unique_preserving_order(items: list[str]) -> list[str]:
             unique.append(item)
             seen.add(item)
     return unique
+
+
+def _extract_anchor_terms(quotes: list[dict], query: str) -> list[str]:
+    """Extract company-name anchors from the first Yahoo search pass."""
+    anchors = []
+    normalized_query = query.strip().upper()
+    ticker_like = _looks_like_ticker_query(query)
+
+    ranked_quotes = sorted(
+        quotes or [],
+        key=lambda q: (
+            0 if ticker_like and q.get("symbol", "").strip().upper() == normalized_query else 1,
+            0 if q.get("quoteType") in {"EQUITY", "ETF"} else 1,
+            q.get("symbol", ""),
+        ),
+    )
+
+    for q in ranked_quotes:
+        name = q.get("longname") or q.get("shortname")
+        if not name:
+            continue
+        normalized_name = name.strip()
+        if not normalized_name:
+            continue
+        if normalized_name.upper() == normalized_query:
+            continue
+        if normalized_name not in anchors:
+            anchors.append(normalized_name)
+        if len(anchors) >= 3:
+            break
+
+    return anchors
+
+
+def _looks_like_ticker_query(query: str) -> bool:
+    """Return whether the search term looks like a raw ticker rather than a company name."""
+    normalized = query.strip().upper()
+    if not normalized or " " in normalized:
+        return False
+    if "." in normalized:
+        return True
+    raw = query.strip()
+    if raw != raw.upper():
+        return False
+    return len(normalized) <= 6 and normalized.replace("-", "").replace("_", "").isalnum()
+
+
+def _score_search_result(
+    query: str,
+    ticker: str,
+    name: str,
+    quote_type: str,
+    exchange: str,
+    source_term: str = None,
+    anchor_search: bool = False,
+) -> int:
+    """Score a search result so the most relevant listing ranks first."""
+    normalized_query = query.strip().upper()
+    normalized_ticker = ticker.strip().upper()
+    normalized_name = name.strip().upper()
+    normalized_exchange = (exchange or "").strip().upper()
+    query_terms = [term for term in normalized_query.replace(".", " ").replace("-", " ").split() if term]
+
+    score = 0
+
+    if _looks_like_ticker_query(query):
+        if normalized_ticker == normalized_query:
+            score += 70
+        elif normalized_ticker.startswith(f"{normalized_query}."):
+            score += 120
+        elif normalized_ticker.startswith(normalized_query):
+            score += 60
+    else:
+        if normalized_query in normalized_name:
+            score += 90
+
+    for term in query_terms:
+        if len(term) >= 2 and term in normalized_name:
+            score += 12
+
+    if quote_type in {"EQUITY", "ETF"}:
+        score += 20
+
+    score += _exchange_preference_score(normalized_ticker, normalized_exchange)
+
+    if source_term and source_term.strip().upper() != normalized_query:
+        score += 8
+
+    if anchor_search:
+        score += 10
+
+    return score
+
+
+def _exchange_preference_score(ticker: str, exchange: str) -> int:
+    """Favor exchange listings over U.S. listings when the company exists on both."""
+    preferred_suffixes = {
+        "AS", "L", "DE", "F", "HM", "DU", "SG", "BE", "MU", "HA", "SW", "PA",
+        "BR", "LS", "MC", "MI", "VI", "ST", "CO", "HE", "OL", "IC", "IR", "WA",
+        "PR", "BD", "AT", "IS", "TA",
+        "TO", "V", "CN", "NE", "MX", "SA", "BA", "SN",
+        "T", "HK", "SS", "SZ", "SI", "AX", "NZ", "KS", "KQ", "TW", "TWO",
+        "NS", "BO", "JK", "KL", "BK",
+        "JO", "CA", "QA", "AE",
+    }
+    us_codes = {"NYQ", "NMS", "NSQ", "NYA", "ASE", "AMX", "BATS"}
+    suffix = ticker.rsplit(".", 1)[-1] if "." in ticker else ""
+
+    if exchange in preferred_suffixes or suffix in preferred_suffixes:
+        return 20
+    if exchange in us_codes or suffix in us_codes:
+        return 0
+    if exchange:
+        return 8
+    return 0
 
 
 def _exchange_symbol_variants(symbol: str) -> list[str]:

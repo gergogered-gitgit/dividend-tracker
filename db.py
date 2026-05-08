@@ -39,7 +39,13 @@ def get_holdings() -> list[dict]:
     return response.data
 
 
-def add_holding(ticker: str, shares: float, company_name: str = None, currency: str = "USD") -> dict:
+def add_holding(
+    ticker: str,
+    shares: float,
+    company_name: str = None,
+    currency: str = "USD",
+    exchange: str = None,
+) -> dict:
     """Add a new holding."""
     client = get_client()
     row = {
@@ -48,7 +54,15 @@ def add_holding(ticker: str, shares: float, company_name: str = None, currency: 
         "company_name": company_name,
         "currency": currency,
     }
-    response = client.table("holdings").insert(row).execute()
+    if exchange:
+        row["exchange"] = exchange
+
+    try:
+        response = client.table("holdings").insert(row).execute()
+    except Exception:
+        # Keep older schemas working if the exchange column has not been added yet.
+        row.pop("exchange", None)
+        response = client.table("holdings").insert(row).execute()
     return response.data[0]
 
 

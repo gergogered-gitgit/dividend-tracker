@@ -5,6 +5,7 @@ CREATE TABLE holdings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     ticker TEXT NOT NULL,
     company_name TEXT,
+    exchange TEXT,
     shares NUMERIC NOT NULL CHECK (shares > 0),
     currency TEXT NOT NULL DEFAULT 'USD',
     created_at TIMESTAMPTZ DEFAULT NOW(),

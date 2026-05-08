@@ -5,6 +5,11 @@ import pandas as pd
 import data
 
 
+class FakeYahooSearch:
+    def __init__(self, quotes):
+        self.quotes = quotes
+
+
 class YieldNormalizationTests(unittest.TestCase):
     def test_yfinance_percent_point_dividend_yield_uses_implied_rate(self):
         info = {
@@ -103,6 +108,46 @@ class HistoryFallbackTests(unittest.TestCase):
         self.assertAlmostEqual(info["price"], 100.0, places=4)
         self.assertAlmostEqual(info["dividend_rate"], 6.71, places=4)
         self.assertAlmostEqual(info["dividend_yield"], 0.0671, places=4)
+
+
+class SearchRankingTests(unittest.TestCase):
+    def test_wmt_search_prefers_german_listing_from_company_anchor(self):
+        def fake_search(term):
+            if term == "WMT":
+                return FakeYahooSearch([
+                    {"symbol": "WMT", "longname": "Walmart Inc.", "quoteType": "EQUITY", "exchange": "NYQ"},
+                ])
+            if term == "Walmart Inc.":
+                return FakeYahooSearch([
+                    {"symbol": "WMT.DE", "longname": "Walmart Inc.", "quoteType": "EQUITY", "exchange": "GER"},
+                    {"symbol": "WMT", "longname": "Walmart Inc.", "quoteType": "EQUITY", "exchange": "NYQ"},
+                ])
+            return FakeYahooSearch([])
+
+        with patch.object(data.yf, "Search", side_effect=fake_search), patch.object(data, "_lookup_ticker_symbols", return_value=[]):
+            results = data.search_tickers("WMT")
+
+        self.assertGreaterEqual(len(results), 2)
+        self.assertEqual(results[0]["ticker"], "WMT.DE")
+
+    def test_vale_search_prefers_local_listing_from_company_anchor(self):
+        def fake_search(term):
+            if term == "Vale":
+                return FakeYahooSearch([
+                    {"symbol": "VALE", "longname": "Vale S.A.", "quoteType": "EQUITY", "exchange": "NYQ"},
+                ])
+            if term == "Vale S.A.":
+                return FakeYahooSearch([
+                    {"symbol": "CVLB.F", "longname": "Vale S.A.", "quoteType": "EQUITY", "exchange": "FRA"},
+                    {"symbol": "VALE", "longname": "Vale S.A.", "quoteType": "EQUITY", "exchange": "NYQ"},
+                ])
+            return FakeYahooSearch([])
+
+        with patch.object(data.yf, "Search", side_effect=fake_search), patch.object(data, "_lookup_ticker_symbols", return_value=[]):
+            results = data.search_tickers("Vale")
+
+        self.assertGreaterEqual(len(results), 2)
+        self.assertEqual(results[0]["ticker"], "CVLB.F")
 
 
 if __name__ == "__main__":
