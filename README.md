@@ -4,7 +4,7 @@ Track your dividend portfolio in one place. See upcoming payments on a visual ca
 
 ## Features
 
-- **Portfolio management** - search and add stocks/ETFs from Yahoo Finance, store the exact selected Yahoo listing, and edit shares inline including fractional shares up to 7 decimal places
+- **Portfolio management** - search and add stocks/ETFs from Yahoo Finance, and edit shares inline including fractional shares up to 7 decimal places
 - **Dividend calendar** - visual monthly calendar showing estimated upcoming dividend payments
 - **Ex-dividend alerts** - warns you when ex-dividend dates are approaching
 - **Dividend date tracking** - shows both ex-dividend dates and next payment dates when Yahoo Finance provides them
@@ -29,9 +29,7 @@ The portfolio table shows both dates when Yahoo Finance provides them. The divid
 
 - Create a free project at [supabase.com](https://supabase.com)
 - Go to **SQL Editor**, paste and run the contents of `supabase_schema.sql`
-- If the table already exists, also run `supabase_migration_exchange.sql`
 - Copy your **Project URL** and **Publishable Key** from Project Settings
-- If you already have an older `holdings` table, add the new `exchange` column or rerun the schema so the app can store the selected listing.
 
 ### 2. Local development
 

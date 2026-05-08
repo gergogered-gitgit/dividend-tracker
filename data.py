@@ -29,6 +29,12 @@ YAHOO_EXCHANGE_SUFFIXES = [
 
 MARKET_DATA_VERSION = "2026-05-06-yield-v3"
 
+COMPANY_NAME_ALIASES = {
+    "ABEA.DE": "Alphabet Inc.",
+    "AMZN": "Amazon.com, Inc.",
+    "APC.DE": "Apple Inc.",
+}
+
 
 # --- Stock info & search ---
 
@@ -69,7 +75,7 @@ def get_stock_info(ticker: str, market_data_version: str = MARKET_DATA_VERSION) 
         dividend_rate = _annual_dividend_rate_from_history(stock)
 
     return {
-        "name": _clean_display_name(info.get("longName") or info.get("shortName") or ticker, ticker),
+        "name": resolve_company_name(ticker, yahoo_name=info.get("longName") or info.get("shortName")),
         "price": price,
         "currency": info.get("currency") or info.get("financialCurrency") or "USD",
         "dividend_rate": dividend_rate,
@@ -125,7 +131,7 @@ def search_tickers(query: str) -> list[dict]:
         add_candidate(
             {
                 "ticker": ticker,
-                "name": _clean_display_name(q.get("longname") or q.get("shortname") or ticker, ticker),
+                "name": resolve_company_name(ticker, yahoo_name=q.get("longname") or q.get("shortname")),
                 "type": q.get("quoteType", ""),
                 "exchange": q.get("exchange", ""),
             },
@@ -687,7 +693,7 @@ def _lookup_ticker_symbol(symbol: str) -> dict:
 
     return {
         "ticker": symbol,
-        "name": _clean_display_name(name, symbol),
+        "name": resolve_company_name(symbol, yahoo_name=name),
         "type": quote_type,
         "exchange": exchange or "",
     }
@@ -744,3 +750,31 @@ def _clean_display_name(name: str, ticker: str = None) -> str:
             cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE).strip()
 
     return cleaned or (ticker or name)
+
+
+def resolve_company_name(ticker: str, stored_name: str = None, yahoo_name: str = None) -> str:
+    """Resolve the most user-friendly company name for a symbol."""
+    candidates = []
+    alias = COMPANY_NAME_ALIASES.get((ticker or "").strip().upper())
+    if alias:
+        candidates.append(alias)
+    if stored_name:
+        candidates.append(stored_name)
+    if yahoo_name:
+        candidates.append(yahoo_name)
+    if ticker:
+        candidates.append(ticker)
+
+    for candidate in candidates:
+        cleaned = _clean_display_name(candidate, ticker)
+        if not cleaned:
+            continue
+        normalized = cleaned.strip().upper()
+        normalized_ticker = (ticker or "").strip().upper()
+        if normalized and normalized_ticker and normalized == normalized_ticker:
+            continue
+        if normalized and normalized_ticker and normalized.endswith(f" {normalized_ticker}"):
+            continue
+        return cleaned
+
+    return ticker or stored_name or yahoo_name or ""

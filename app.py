@@ -106,7 +106,6 @@ if page == "Portfolio":
                     shares=shares,
                     company_name=info["name"],
                     currency=info.get("currency", "USD"),
-                    exchange=selected.get("exchange", ""),
                 )
                 st.success(f"Added {selected['ticker']} ({info['name']})")
                 st.cache_data.clear()
@@ -146,8 +145,7 @@ if page == "Portfolio":
         rows.append({
             "id": h["id"],
             "Ticker": h["ticker"],
-            "Exchange": h.get("exchange") or "",
-            "Company": info["name"],
+            "Company": data.resolve_company_name(h["ticker"], h.get("company_name"), info["name"]),
             "Shares": float(h["shares"]),
             "Price": data.convert_amount(info["price"], stock_cur, display_cur),
             "Yield": f"{info['dividend_yield']:.2%}" if info["dividend_yield"] else "N/A",
@@ -162,7 +160,7 @@ if page == "Portfolio":
     # Display as a dataframe
     df = pd.DataFrame(rows)
     display_df = df[
-        ["Ticker", "Exchange", "Company", "Shares", "Price", "Yield", "Annual Div", "Div Growth", "Ex-Div Date", "Pay Date"]
+        ["Ticker", "Company", "Shares", "Price", "Yield", "Annual Div", "Div Growth", "Ex-Div Date", "Pay Date"]
     ].copy()
 
     st.dataframe(
@@ -170,7 +168,6 @@ if page == "Portfolio":
         use_container_width=True,
         hide_index=True,
         column_config={
-            "Exchange": st.column_config.TextColumn("Exchange"),
             "Price": st.column_config.NumberColumn(f"Price ({display_cur})", format="%.2f"),
             "Annual Div": st.column_config.NumberColumn(f"Annual Div ({display_cur})", format="%.2f"),
             "Shares": st.column_config.NumberColumn("Shares", format="%.7f"),

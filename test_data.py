@@ -155,6 +155,11 @@ class DisplayNameTests(unittest.TestCase):
         self.assertEqual(data._clean_display_name("Vale S.A. (VALE)", "VALE"), "Vale S.A.")
         self.assertEqual(data._clean_display_name("Walmart Inc. - WMT", "WMT"), "Walmart Inc.")
 
+    def test_resolve_company_name_uses_aliases(self):
+        self.assertEqual(data.resolve_company_name("ABEA.DE", yahoo_name="ABEA.DE"), "Alphabet Inc.")
+        self.assertEqual(data.resolve_company_name("AMZN", yahoo_name="AMZN"), "Amazon.com, Inc.")
+        self.assertEqual(data.resolve_company_name("APC.DE", yahoo_name="APC.DE"), "Apple Inc.")
+
 
 if __name__ == "__main__":
     unittest.main()
