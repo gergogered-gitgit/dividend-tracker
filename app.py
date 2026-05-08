@@ -59,9 +59,9 @@ if page == "Portfolio":
     # --- Alerts ---
     if holdings:
         alerts = data.get_upcoming_alerts(holdings)
-        if alerts:
-            alert_label = f"Upcoming ex-dividend dates - next 14 days ({len(alerts)})"
-            with st.expander(alert_label, expanded=False):
+        alert_label = f"Upcoming ex-dividend dates - next 14 days ({len(alerts)})"
+        with st.expander(alert_label, expanded=False):
+            if alerts:
                 for a in alerts:
                     days_text = "TODAY" if a["days_left"] == 0 else f"in {a['days_left']} day{'s' if a['days_left'] != 1 else ''}"
                     holding_label = a.get("company") or a["ticker"]
@@ -72,6 +72,8 @@ if page == "Portfolio":
                         f'</div>',
                         unsafe_allow_html=True,
                     )
+            else:
+                st.info("No upcoming ex-dividend dates in the next 14 days.")
 
     # --- Add new holding ---
     st.subheader("Add New Holding")
