@@ -109,6 +109,24 @@ class HistoryFallbackTests(unittest.TestCase):
         self.assertAlmostEqual(info["dividend_rate"], 6.71, places=4)
         self.assertAlmostEqual(info["dividend_yield"], 0.0671, places=4)
 
+    def test_get_stock_info_normalizes_pence_quoted_uk_listings(self):
+        class FakeStock:
+            @property
+            def info(self):
+                return {
+                    "currency": "GBp",
+                    "currentPrice": 670,
+                    "dividendRate": 30,
+                    "longName": "Invesco FTSE All-World UCITS ETF USD Accumulation",
+                }
+
+        with patch.object(data.yf, "Ticker", return_value=FakeStock()):
+            info = data.get_stock_info("FWRG.L")
+
+        self.assertEqual(info["currency"], "GBP")
+        self.assertAlmostEqual(info["price"], 6.7, places=4)
+        self.assertAlmostEqual(info["dividend_rate"], 0.3, places=4)
+
 
 class SearchRankingTests(unittest.TestCase):
     def test_wmt_search_prefers_german_listing_from_company_anchor(self):

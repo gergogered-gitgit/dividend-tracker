@@ -35,6 +35,8 @@ COMPANY_NAME_ALIASES = {
     "APC.DE": "Apple Inc.",
 }
 
+PENCE_CURRENCIES = {"GBp", "GBX"}
+
 
 # --- Stock info & search ---
 
@@ -51,6 +53,8 @@ def get_stock_info(ticker: str, market_data_version: str = MARKET_DATA_VERSION) 
         info = stock.info or {}
     except Exception:
         info = {}
+
+    currency = info.get("currency") or info.get("financialCurrency") or "USD"
 
     # Try multiple field names — yfinance changes these across versions
     price = (
@@ -74,10 +78,12 @@ def get_stock_info(ticker: str, market_data_version: str = MARKET_DATA_VERSION) 
     if not dividend_rate:
         dividend_rate = _annual_dividend_rate_from_history(stock)
 
+    price, dividend_rate, currency = _normalize_quote_currency_values(price, dividend_rate, currency)
+
     return {
         "name": resolve_company_name(ticker, yahoo_name=info.get("longName") or info.get("shortName")),
         "price": price,
-        "currency": info.get("currency") or info.get("financialCurrency") or "USD",
+        "currency": currency,
         "dividend_rate": dividend_rate,
         "dividend_yield": _normalize_yield(info, price, annual_rate=dividend_rate),
         "ex_dividend_date": _timestamp_to_date(info.get("exDividendDate")),
@@ -525,6 +531,16 @@ def _to_float(value) -> float:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _normalize_quote_currency_values(price: float, dividend_rate: float, currency: str) -> tuple[float, float, str]:
+    """Normalize pence-quoted UK instruments to GBP amounts."""
+    normalized_currency = currency or "USD"
+    if normalized_currency in PENCE_CURRENCIES:
+        normalized_currency = "GBP"
+        price = price / 100 if price is not None else None
+        dividend_rate = dividend_rate / 100 if dividend_rate is not None else None
+    return price, dividend_rate, normalized_currency
 
 
 def _ticker_symbol_candidates(query: str) -> list[str]:
