@@ -269,12 +269,13 @@ elif page == "Dividend Calendar":
         info = data.get_stock_info(h["ticker"])
         stock_cur = info.get("currency") or h.get("currency") or "USD"
         upcoming = data.estimate_upcoming_dividends(h["ticker"], float(h["shares"]))
+        company_name = data.resolve_company_name(h["ticker"], h.get("company_name"), info["name"])
         for div in upcoming:
             if div["expected_date"]:
                 all_upcoming.append({
                     "date": div["expected_date"],
                     "ticker": h["ticker"],
-                    "company": info["name"],
+                    "company": company_name,
                     "per_share": div["amount_per_share"],
                     "total_eur": data.convert_amount(div["total_amount"], stock_cur, display_cur),
                     "frequency": div["frequency"],
@@ -433,6 +434,7 @@ elif page == "Summary":
         info = data.get_stock_info(h["ticker"])
         stock_cur = info.get("currency") or h.get("currency") or "USD"
         shares = float(h["shares"])
+        company_name = data.resolve_company_name(h["ticker"], h.get("company_name"), info["name"])
 
         # Portfolio value
         value = 0.0
@@ -446,7 +448,7 @@ elif page == "Summary":
         total_annual_div += annual_display
 
         breakdown.append({
-            "Name": info["name"],
+            "Name": company_name,
             "Ticker": h["ticker"],
             f"Value ({display_cur})": value,
             f"Annual Div ({display_cur})": annual_display,
