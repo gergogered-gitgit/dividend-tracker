@@ -29,6 +29,7 @@ The portfolio table shows both dates when Yahoo Finance provides them. The divid
 
 - Create a free project at [supabase.com](https://supabase.com)
 - Go to **SQL Editor**, paste and run the contents of `supabase_schema.sql`
+- If the table already exists, also run `supabase_migration_exchange.sql`
 - Copy your **Project URL** and **Publishable Key** from Project Settings
 - If you already have an older `holdings` table, add the new `exchange` column or rerun the schema so the app can store the selected listing.
 

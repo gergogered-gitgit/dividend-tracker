@@ -4,11 +4,13 @@ Fetches dividend history, upcoming payments, stock info, exchange rates,
 search, dividend growth, and ex-dividend alerts.
 """
 
-import yfinance as yf
+import re
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+
 import pandas as pd
 import streamlit as st
-from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor
+import yfinance as yf
 
 
 YAHOO_EXCHANGE_SUFFIXES = [
@@ -67,7 +69,7 @@ def get_stock_info(ticker: str, market_data_version: str = MARKET_DATA_VERSION) 
         dividend_rate = _annual_dividend_rate_from_history(stock)
 
     return {
-        "name": info.get("longName") or info.get("shortName") or ticker,
+        "name": _clean_display_name(info.get("longName") or info.get("shortName") or ticker, ticker),
         "price": price,
         "currency": info.get("currency") or info.get("financialCurrency") or "USD",
         "dividend_rate": dividend_rate,
@@ -123,7 +125,7 @@ def search_tickers(query: str) -> list[dict]:
         add_candidate(
             {
                 "ticker": ticker,
-                "name": q.get("longname") or q.get("shortname") or ticker,
+                "name": _clean_display_name(q.get("longname") or q.get("shortname") or ticker, ticker),
                 "type": q.get("quoteType", ""),
                 "exchange": q.get("exchange", ""),
             },
@@ -685,7 +687,7 @@ def _lookup_ticker_symbol(symbol: str) -> dict:
 
     return {
         "ticker": symbol,
-        "name": name,
+        "name": _clean_display_name(name, symbol),
         "type": quote_type,
         "exchange": exchange or "",
     }
@@ -712,3 +714,33 @@ def _frequency_label(payments_per_year: int) -> str:
     elif payments_per_year >= 0.5:
         return "annual"
     return "irregular"
+
+
+def _clean_display_name(name: str, ticker: str = None) -> str:
+    """Remove ticker suffixes that Yahoo sometimes appends to company names."""
+    if not name:
+        return ticker or ""
+
+    cleaned = " ".join(str(name).split()).strip()
+    if not ticker:
+        return cleaned
+
+    raw_ticker = ticker.strip()
+    if not raw_ticker:
+        return cleaned
+
+    ticker_variants = [raw_ticker, raw_ticker.upper()]
+    if "." in raw_ticker:
+        ticker_variants.append(raw_ticker.split(".", 1)[0])
+
+    for variant in _unique_preserving_order(ticker_variants):
+        escaped = re.escape(variant)
+        patterns = [
+            rf"\s*\(\s*{escaped}\s*\)\s*$",
+            rf"\s*[-–—]\s*{escaped}\s*$",
+            rf"\s*{escaped}\s*$",
+        ]
+        for pattern in patterns:
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE).strip()
+
+    return cleaned or (ticker or name)

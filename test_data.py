@@ -150,5 +150,11 @@ class SearchRankingTests(unittest.TestCase):
         self.assertEqual(results[0]["ticker"], "CVLB.F")
 
 
+class DisplayNameTests(unittest.TestCase):
+    def test_clean_display_name_strips_ticker_suffix(self):
+        self.assertEqual(data._clean_display_name("Vale S.A. (VALE)", "VALE"), "Vale S.A.")
+        self.assertEqual(data._clean_display_name("Walmart Inc. - WMT", "WMT"), "Walmart Inc.")
+
+
 if __name__ == "__main__":
     unittest.main()
