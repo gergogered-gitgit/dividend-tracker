@@ -163,9 +163,9 @@ class DisplayNameTests(unittest.TestCase):
 
 class AlertFallbackTests(unittest.TestCase):
     def test_get_upcoming_alerts_uses_confirmed_ex_dividend_date(self):
-        holdings = [{"ticker": "WMT", "shares": 10}]
+        holdings = [{"ticker": "WMT", "shares": 10, "company_name": "Walmart Inc."}]
         fake_info = {
-            "name": "Walmart Inc.",
+            "name": "WMT",
             "ex_dividend_date": pd.Timestamp("2026-05-10").date(),
         }
 
@@ -175,11 +175,12 @@ class AlertFallbackTests(unittest.TestCase):
         self.assertEqual(len(alerts), 1)
         self.assertEqual(alerts[0]["source"], "confirmed")
         self.assertEqual(alerts[0]["ex_date"], pd.Timestamp("2026-05-10").date())
+        self.assertEqual(alerts[0]["company"], "Walmart Inc.")
 
     def test_get_upcoming_alerts_falls_back_to_estimated_dividend(self):
-        holdings = [{"ticker": "XVALO.MC", "shares": 10}]
+        holdings = [{"ticker": "XVALO.MC", "shares": 10, "company_name": "Vale S.A."}]
         fake_info = {
-            "name": "Vale",
+            "name": "XVALO.MC",
             "ex_dividend_date": None,
         }
         projected_date = (pd.Timestamp.now().normalize() + pd.Timedelta(days=7)).date()
@@ -196,6 +197,7 @@ class AlertFallbackTests(unittest.TestCase):
         self.assertEqual(len(alerts), 1)
         self.assertEqual(alerts[0]["source"], "estimated")
         self.assertEqual(alerts[0]["ex_date"], projected_date)
+        self.assertEqual(alerts[0]["company"], "Vale S.A.")
 
 
 if __name__ == "__main__":

@@ -64,7 +64,7 @@ if page == "Portfolio":
             if alerts:
                 for a in alerts:
                     days_text = "TODAY" if a["days_left"] == 0 else f"in {a['days_left']} day{'s' if a['days_left'] != 1 else ''}"
-                    holding_label = a.get("company") or a["ticker"]
+                    holding_label = a.get("company") or data.resolve_company_name(a["ticker"])
                     source_label = "Yahoo ex-dividend" if a.get("source") == "confirmed" else "Estimated dividend"
                     st.markdown(
                         f'<div class="alert-item">'

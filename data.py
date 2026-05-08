@@ -349,12 +349,17 @@ def get_upcoming_alerts(holdings: list[dict], days_ahead: int = 14) -> list[dict
 
     for h in holdings:
         info = get_stock_info(h["ticker"])
+        company_name = resolve_company_name(
+            h["ticker"],
+            h.get("company_name"),
+            info.get("name"),
+        )
         ex_date = info.get("ex_dividend_date")
         if ex_date and today <= ex_date <= cutoff:
             days_left = (ex_date - today).days
             alerts.append({
                 "ticker": h["ticker"],
-                "company": info["name"],
+                "company": company_name,
                 "ex_date": ex_date,
                 "days_left": days_left,
                 "source": "confirmed",
@@ -372,7 +377,7 @@ def get_upcoming_alerts(holdings: list[dict], days_ahead: int = 14) -> list[dict
             days_left = (expected_date - today).days
             alerts.append({
                 "ticker": h["ticker"],
-                "company": info["name"],
+                "company": company_name,
                 "ex_date": expected_date,
                 "days_left": days_left,
                 "source": "estimated",
