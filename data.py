@@ -357,8 +357,28 @@ def get_upcoming_alerts(holdings: list[dict], days_ahead: int = 14) -> list[dict
                 "company": info["name"],
                 "ex_date": ex_date,
                 "days_left": days_left,
+                "source": "confirmed",
                 "urgent": days_left <= 3,
             })
+            continue
+
+        # Fallback: if Yahoo does not provide a usable ex-dividend date, try to
+        # infer a near-term upcoming dividend from the recent payment cadence.
+        for projected in estimate_upcoming_dividends(h["ticker"], float(h["shares"])):
+            expected_date = projected.get("expected_date")
+            if not expected_date or not (today <= expected_date <= cutoff):
+                continue
+
+            days_left = (expected_date - today).days
+            alerts.append({
+                "ticker": h["ticker"],
+                "company": info["name"],
+                "ex_date": expected_date,
+                "days_left": days_left,
+                "source": "estimated",
+                "urgent": days_left <= 3,
+            })
+            break
 
     return sorted(alerts, key=lambda a: a["days_left"])
 

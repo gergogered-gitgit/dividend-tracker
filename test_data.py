@@ -161,5 +161,42 @@ class DisplayNameTests(unittest.TestCase):
         self.assertEqual(data.resolve_company_name("APC.DE", yahoo_name="APC.DE"), "Apple Inc.")
 
 
+class AlertFallbackTests(unittest.TestCase):
+    def test_get_upcoming_alerts_uses_confirmed_ex_dividend_date(self):
+        holdings = [{"ticker": "WMT", "shares": 10}]
+        fake_info = {
+            "name": "Walmart Inc.",
+            "ex_dividend_date": pd.Timestamp("2026-05-10").date(),
+        }
+
+        with patch.object(data, "get_stock_info", return_value=fake_info), patch.object(data, "estimate_upcoming_dividends", return_value=[]):
+            alerts = data.get_upcoming_alerts(holdings, days_ahead=14)
+
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["source"], "confirmed")
+        self.assertEqual(alerts[0]["ex_date"], pd.Timestamp("2026-05-10").date())
+
+    def test_get_upcoming_alerts_falls_back_to_estimated_dividend(self):
+        holdings = [{"ticker": "XVALO.MC", "shares": 10}]
+        fake_info = {
+            "name": "Vale",
+            "ex_dividend_date": None,
+        }
+        projected_date = (pd.Timestamp.now().normalize() + pd.Timedelta(days=7)).date()
+        projected = [{
+            "expected_date": projected_date,
+            "amount_per_share": 1.0,
+            "total_amount": 10.0,
+            "frequency": "quarterly",
+        }]
+
+        with patch.object(data, "get_stock_info", return_value=fake_info), patch.object(data, "estimate_upcoming_dividends", return_value=projected):
+            alerts = data.get_upcoming_alerts(holdings, days_ahead=14)
+
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["source"], "estimated")
+        self.assertEqual(alerts[0]["ex_date"], projected_date)
+
+
 if __name__ == "__main__":
     unittest.main()

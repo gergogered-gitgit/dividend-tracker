@@ -65,15 +65,16 @@ if page == "Portfolio":
                 for a in alerts:
                     days_text = "TODAY" if a["days_left"] == 0 else f"in {a['days_left']} day{'s' if a['days_left'] != 1 else ''}"
                     holding_label = a.get("company") or a["ticker"]
+                    source_label = "Yahoo ex-dividend" if a.get("source") == "confirmed" else "Estimated dividend"
                     st.markdown(
                         f'<div class="alert-item">'
-                        f'<span class="alert-text"><strong>{holding_label}</strong> ({a["ticker"]}) ex-dividend date ({a["ex_date"]})</span>'
+                        f'<span class="alert-text"><strong>{holding_label}</strong> ({a["ticker"]}) {source_label} date ({a["ex_date"]})</span>'
                         f'<span class="alert-days">{days_text}</span>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
             else:
-                st.info("No upcoming ex-dividend dates in the next 14 days.")
+                st.info("No confirmed or estimated ex-dividend dates in the next 14 days.")
 
     # --- Add new holding ---
     st.subheader("Add New Holding")
