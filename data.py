@@ -344,13 +344,13 @@ def get_dividend_growth(ticker: str) -> dict:
 
 # --- Alerts ---
 
-def get_upcoming_alerts(holdings: list[dict], days_ahead: int = 14) -> list[dict]:
+def get_upcoming_alerts(holdings: list[dict], days_ahead: int = 14, today=None) -> list[dict]:
     """
     Check all holdings for upcoming ex-dividend dates within the next N days.
     Returns a list of alerts sorted by days remaining (most urgent first).
     """
     alerts = []
-    today = datetime.now().date()
+    today = today or datetime.now().date()
     cutoff = today + timedelta(days=days_ahead)
 
     for h in holdings:

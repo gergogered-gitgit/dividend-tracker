@@ -6,12 +6,18 @@ Track your portfolio dividends with a simple interface.
 import streamlit as st
 import pandas as pd
 import altair as alt
+from html import escape
 from datetime import datetime, date
 import calendar as cal_module
 
 import db
 import data
 from themes import get_theme_css
+
+
+def html_escape(value) -> str:
+    """Escape dynamic values before rendering custom HTML snippets."""
+    return escape(str(value), quote=True)
 
 # --- Page config ---
 st.set_page_config(
@@ -66,10 +72,13 @@ if page == "Portfolio":
                     days_text = "TODAY" if a["days_left"] == 0 else f"in {a['days_left']} day{'s' if a['days_left'] != 1 else ''}"
                     holding_label = a.get("company") or data.resolve_company_name(a["ticker"])
                     source_label = "Yahoo ex-dividend" if a.get("source") == "confirmed" else "Estimated dividend"
+                    alert_class = "alert-item urgent" if a.get("urgent") else "alert-item"
                     st.markdown(
-                        f'<div class="alert-item">'
-                        f'<span class="alert-text"><strong>{holding_label}</strong> ({a["ticker"]}) {source_label} date ({a["ex_date"]})</span>'
-                        f'<span class="alert-days">{days_text}</span>'
+                        f'<div class="{alert_class}">'
+                        f'<span class="alert-text"><strong>{html_escape(holding_label)}</strong> '
+                        f'({html_escape(a["ticker"])}) {html_escape(source_label)} date '
+                        f'({html_escape(a["ex_date"])})</span>'
+                        f'<span class="alert-days">{html_escape(days_text)}</span>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
@@ -325,8 +334,8 @@ elif page == "Dividend Calendar":
             amt = data.fmt_money(e["total_eur"], display_cur) if e["total_eur"] else "?"
             html += (
                 f'<div class="cal-chip">'
-                f'<span class="cal-chip-ticker">{e["ticker"]}</span>'
-                f'<span class="cal-chip-amount">{amt}</span>'
+                f'<span class="cal-chip-ticker">{html_escape(e["ticker"])}</span>'
+                f'<span class="cal-chip-amount">{html_escape(amt)}</span>'
                 f'</div>'
             )
         html += '</div>'
@@ -339,8 +348,8 @@ elif page == "Dividend Calendar":
     total_label = f"Total dividends in {month_name}" if month_total > 0 else f"No dividends expected in {month_name}"
     st.markdown(
         f'<div class="cal-month-total">'
-        f'<span class="cal-total-label">{total_label}</span>'
-        f'<span class="cal-total-value">{total_display} {display_cur}</span>'
+        f'<span class="cal-total-label">{html_escape(total_label)}</span>'
+        f'<span class="cal-total-value">{html_escape(total_display)} {html_escape(display_cur)}</span>'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -551,11 +560,11 @@ elif page == "Summary":
     st.markdown(
         f'<div style="border-radius:8px; overflow:hidden;">'
         f'<div class="tax-row"><span class="tax-label">Gross annual dividends</span>'
-        f'<span class="tax-value">{data.fmt_money(gross, display_cur)} {display_cur}</span></div>'
+        f'<span class="tax-value">{html_escape(data.fmt_money(gross, display_cur))} {html_escape(display_cur)}</span></div>'
         f'<div class="tax-row"><span class="tax-label">Estimated withholding ({tax_rate}%)</span>'
-        f'<span class="tax-value" style="opacity:0.6;">-{data.fmt_money(withheld, display_cur)} {display_cur}</span></div>'
+        f'<span class="tax-value" style="opacity:0.6;">-{html_escape(data.fmt_money(withheld, display_cur))} {html_escape(display_cur)}</span></div>'
         f'<div class="tax-row tax-net"><span class="tax-label">Net after withholding</span>'
-        f'<span class="tax-value">{data.fmt_money(net, display_cur)} {display_cur}</span></div>'
+        f'<span class="tax-value">{html_escape(data.fmt_money(net, display_cur))} {html_escape(display_cur)}</span></div>'
         f'</div>'
         f'<p class="tax-note">Estimate only. Actual tax depends on your residency, treaty status, and account type. '
         f'ETFs may have different withholding rules.</p>',

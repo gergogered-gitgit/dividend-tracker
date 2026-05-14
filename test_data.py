@@ -188,7 +188,11 @@ class AlertFallbackTests(unittest.TestCase):
         }
 
         with patch.object(data, "get_stock_info", return_value=fake_info), patch.object(data, "estimate_upcoming_dividends", return_value=[]):
-            alerts = data.get_upcoming_alerts(holdings, days_ahead=14)
+            alerts = data.get_upcoming_alerts(
+                holdings,
+                days_ahead=14,
+                today=pd.Timestamp("2026-05-01").date(),
+            )
 
         self.assertEqual(len(alerts), 1)
         self.assertEqual(alerts[0]["source"], "confirmed")
